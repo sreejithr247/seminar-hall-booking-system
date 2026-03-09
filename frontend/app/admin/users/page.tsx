@@ -49,7 +49,7 @@ export default function AdminUsersPage() {
 
   const fetchUsers = () => {
     usersApi.getAll(roleFilter || undefined)
-      .then((res) => setUsers(res.data))
+      .then((res) => setUsers(res.data ?? []))
       .catch(() => toast.error('Failed to load users'));
   };
 

@@ -23,7 +23,7 @@ export default function AdminHallsPage() {
 
   const fetchHalls = () => {
     hallsApi.getAll()
-      .then((res) => setHalls(res.data))
+      .then((res) => setHalls(res.data ?? []))
       .catch(() => toast.error('Failed to load halls'))
       .finally(() => setFetching(false));
   };

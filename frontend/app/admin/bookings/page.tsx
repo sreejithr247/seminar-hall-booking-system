@@ -20,7 +20,7 @@ export default function AdminBookingsPage() {
 
   const fetchBookings = () => {
     bookingsApi.getAll()
-      .then((res) => setBookings(res.data))
+      .then((res) => setBookings(res.data ?? []))
       .catch(() => toast.error('Failed to load bookings'))
       .finally(() => setFetching(false));
   };
