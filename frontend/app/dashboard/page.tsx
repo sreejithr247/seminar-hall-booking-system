@@ -34,6 +34,8 @@ export default function DashboardPage() {
       { label: '📅 All Bookings', href: '/admin/bookings' },
       { label: '🏛️ Manage Halls', href: '/admin/halls' },
       { label: '🏢 Manage Departments', href: '/admin/departments' },
+      { label: '🎓 Manage Classes', href: '/admin/classes' },
+      { label: '🏅 Manage Clubs', href: '/admin/clubs' },
       { label: '👥 Manage Users', href: '/admin/users' },
       { label: '📊 Reports', href: '/admin/reports' },
     ],
