@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"seminar-hall-booking-system/internal/models"
 
 	"github.com/jackc/pgx/v5"
@@ -138,24 +139,56 @@ func (r *ManagementRepository) ReactivateUser(ctx context.Context, id int) error
 }
 
 type CreateUserInput struct {
-	Username  string  `json:"username"`
-	Password  string  `json:"password"`
-	FullName  string  `json:"full_name"`
-	Email     *string `json:"email"`
-	Phone     *string `json:"phone"`
-	Role      string  `json:"role"`
-	DeptID    *int    `json:"dept_id"`
+	Username      string  `json:"username"`
+	Password      string  `json:"password"`
+	FullName      string  `json:"full_name"`
+	Email         *string `json:"email"`
+	Phone         *string `json:"phone"`
+	Role          string  `json:"role"`
+	DeptID        *int    `json:"dept_id"`
+	RequesterType string  `json:"requester_type"` // 'class' or 'club'
+	ClassID       *int    `json:"class_id"`
+	ClubID        *int    `json:"club_id"`
 }
 
 func (r *ManagementRepository) CreateUser(ctx context.Context, input *CreateUserInput, passwordHash string) (*models.User, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
 	var u models.User
-	err := r.db.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`INSERT INTO users (username, password_hash, full_name, email, phone, role, dept_id, is_active)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, true)
 		 RETURNING user_id, username, password_hash, full_name, email, phone, role, dept_id, is_active, created_at, updated_at`,
 		input.Username, passwordHash, input.FullName, input.Email, input.Phone, input.Role, input.DeptID,
 	).Scan(&u.UserID, &u.Username, &u.PasswordHash, &u.FullName, &u.Email, &u.Phone, &u.Role, &u.DeptID, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
-	return &u, err
+	if err != nil {
+		return nil, err
+	}
+
+	// If role is requester, also register as requester
+	if input.Role == "requester" {
+		if input.RequesterType == "" {
+			return nil, fmt.Errorf("requester_type is required for requester role")
+		}
+		_, err = tx.Exec(ctx,
+			`INSERT INTO requesters (user_id, requester_type, class_id, club_id)
+			 VALUES ($1, $2, $3, $4)`,
+			u.UserID, input.RequesterType, input.ClassID, input.ClubID,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return &u, nil
 }
 
 func (r *ManagementRepository) GetAllUsersIncludingInactive(ctx context.Context) ([]models.User, error) {

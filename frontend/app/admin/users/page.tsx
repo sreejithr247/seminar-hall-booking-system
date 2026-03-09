@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { usersApi, departmentsApi } from '@/lib/services';
-import { User, Department } from '@/lib/types';
+import { usersApi, departmentsApi, classesApi, clubsApi } from '@/lib/services';
+import { User, Department, Class, Club } from '@/lib/types';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -29,6 +29,7 @@ const roleLabel: Record<string, string> = {
 const EMPTY_FORM = {
   username: '', password: '', full_name: '', email: '', phone: '',
   role: 'requester' as string, dept_id: '',
+  requester_type: 'class' as string, class_id: '', club_id: '',
 };
 
 export default function AdminUsersPage() {
@@ -41,6 +42,8 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [clubs, setClubs] = useState<Club[]>([]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -56,9 +59,20 @@ export default function AdminUsersPage() {
   useEffect(() => {
     if (user?.role === 'admin') {
       fetchUsers();
-      departmentsApi.getAll().then((res) => setDepartments(res.data)).catch(() => {});
+      departmentsApi.getAll().then((res) => setDepartments(res.data ?? [])).catch(() => {});
+      clubsApi.getAll().then((res) => setClubs(res.data ?? [])).catch(() => {});
     }
   }, [user, roleFilter]);
+
+  useEffect(() => {
+    if (form.dept_id && form.role === 'requester' && form.requester_type === 'class') {
+      classesApi.getByDept(parseInt(form.dept_id))
+        .then((res) => setClasses(res.data ?? []))
+        .catch(() => toast.error('Failed to load classes'));
+    } else {
+      setClasses([]);
+    }
+  }, [form.dept_id, form.role, form.requester_type]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +86,9 @@ export default function AdminUsersPage() {
         phone: form.phone || undefined,
         role: form.role,
         dept_id: form.dept_id ? parseInt(form.dept_id) : undefined,
+        requester_type: form.role === 'requester' ? form.requester_type : undefined,
+        class_id: (form.role === 'requester' && form.requester_type === 'class' && form.class_id) ? parseInt(form.class_id) : undefined,
+        club_id: (form.role === 'requester' && form.requester_type === 'club' && form.club_id) ? parseInt(form.club_id) : undefined,
       });
       toast.success(`User "${form.username}" created successfully!`);
       setShowForm(false);
@@ -186,6 +203,45 @@ export default function AdminUsersPage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                   value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
+
+              {form.role === 'requester' && (
+                <>
+                  <div className="sm:col-span-2 border-t border-gray-100 pt-4 mt-2">
+                    <h3 className="text-sm font-bold text-gray-800 mb-3">Requester Entity Profile</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Entity Type *</label>
+                        <select required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                          value={form.requester_type} onChange={(e) => setForm({ ...form, requester_type: e.target.value, class_id: '', club_id: '' })}>
+                          <option value="class">Class</option>
+                          <option value="club">Club</option>
+                        </select>
+                      </div>
+
+                      {form.requester_type === 'class' ? (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Select Class *</label>
+                          <select required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                            disabled={!form.dept_id}
+                            value={form.class_id} onChange={(e) => setForm({ ...form, class_id: e.target.value })}>
+                            <option value="">{form.dept_id ? 'Select a class' : 'Select department first'}</option>
+                            {classes.map((c) => <option key={c.class_id} value={c.class_id}>{c.class_name} ({c.year})</option>)}
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Select Club *</label>
+                          <select required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                            value={form.club_id} onChange={(e) => setForm({ ...form, club_id: e.target.value })}>
+                            <option value="">Select a club</option>
+                            {clubs.map((c) => <option key={c.club_id} value={c.club_id}>{c.club_name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="mt-5 flex gap-3">
               <button type="submit" disabled={saving}
