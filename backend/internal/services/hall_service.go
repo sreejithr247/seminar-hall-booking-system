@@ -32,3 +32,13 @@ func (s *HallService) GetAvailability(ctx context.Context, hallID int, dateStr s
 	
 	return s.hallRepo.GetAvailability(ctx, hallID, date)
 }
+
+func (s *HallService) GetAvailabilityForAll(ctx context.Context, dateStr string) ([]models.AvailabilitySlot, error) {
+	// Parse date string (YYYY-MM-DD)
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return nil, err
+	}
+	
+	return s.hallRepo.GetAvailabilityForAll(ctx, date)
+}

@@ -116,3 +116,55 @@ func (r *HallRepository) GetAvailability(ctx context.Context, hallID int, date t
 
 	return bookings, nil
 }
+// GetAvailabilityForAll gets confirmed bookings for ALL active halls on a specific date
+func (r *HallRepository) GetAvailabilityForAll(ctx context.Context, date time.Time) ([]models.AvailabilitySlot, error) {
+	// 1. Get all active halls
+	halls, err := r.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Get all bookings for that date
+	query := `
+		SELECT booking_id, request_id, hall_id, requester_id, event_title, event_date, start_time, end_time, status, created_at, completed_at
+		FROM bookings
+		WHERE event_date = $1 AND status != 'cancelled'
+		ORDER BY start_time ASC
+	`
+	rows, err := r.db.Query(ctx, query, date.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// 3. Group bookings by hall_id
+	bookingsByHall := make(map[int][]models.Booking)
+	for rows.Next() {
+		var b models.Booking
+		err := rows.Scan(
+			&b.BookingID, &b.RequestID, &b.HallID, &b.RequesterID,
+			&b.EventTitle, &b.EventDate, &b.StartTime, &b.EndTime,
+			&b.Status, &b.CreatedAt, &b.CompletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookingsByHall[b.HallID] = append(bookingsByHall[b.HallID], b)
+	}
+
+	// 4. Map halls to availability slots
+	var slots []models.AvailabilitySlot
+	for _, h := range halls {
+		bookings := bookingsByHall[h.HallID]
+		if bookings == nil {
+			bookings = []models.Booking{}
+		}
+		slots = append(slots, models.AvailabilitySlot{
+			HallID:   h.HallID,
+			HallName: h.HallName,
+			Bookings: bookings,
+		})
+	}
+
+	return slots, nil
+}

@@ -69,3 +69,9 @@ type Booking struct {
 	CompletedAt *time.Time    `json:"completed_at"`
 }
 
+type AvailabilitySlot struct {
+	HallID   int       `json:"hall_id"`
+	HallName string    `json:"hall_name"`
+	Bookings []Booking `json:"bookings"`
+}
+
