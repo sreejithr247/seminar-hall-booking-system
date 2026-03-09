@@ -85,11 +85,16 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 			{
 				coordinator.GET("/requests/dept-pending", coordinatorHandler.GetPendingRequests)
 				coordinator.PATCH("/requests/:id/dept-review", coordinatorHandler.ReviewRequest)
-				// Dept management
-				coordinator.GET("/classes", mgmtHandler.GetClasses)
-				coordinator.POST("/classes", mgmtHandler.CreateClass)
-				coordinator.DELETE("/classes/:id", mgmtHandler.DeleteClass)
 				coordinator.GET("/users/faculties", mgmtHandler.GetFaculties)
+			}
+
+			// Class management — accessible by both admin and dept_coordinator
+			classGroup := protected.Group("")
+			classGroup.Use(middleware.RequireRole("admin", "dept_coordinator"))
+			{
+				classGroup.GET("/classes", mgmtHandler.GetClasses)
+				classGroup.POST("/classes", mgmtHandler.CreateClass)
+				classGroup.DELETE("/classes/:id", mgmtHandler.DeleteClass)
 			}
 
 			// Admin routes
@@ -114,7 +119,7 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 				admin.POST("/users", mgmtHandler.CreateUser)
 				admin.DELETE("/users/:id", mgmtHandler.DeactivateUser)
 				admin.PATCH("/users/:id/reactivate", mgmtHandler.ReactivateUser)
-				// Club management
+				// Club management (write-only; GET /clubs is public)
 				admin.POST("/clubs", mgmtHandler.CreateClub)
 				admin.DELETE("/clubs/:id", mgmtHandler.DeleteClub)
 				// Reports
