@@ -4,15 +4,19 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
-  withCredentials: true, // For HTTP-only cookies
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to add auth token if available
+// Attach JWT token from localStorage on every request
 api.interceptors.request.use((config) => {
-  // Token will be sent via cookie, but we can also check localStorage if needed
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
   return config;
 });
 
@@ -26,6 +30,7 @@ api.interceptors.response.use(
         const publicPaths = ['/login', '/', '/halls'];
         const isPublic = publicPaths.some((p) => window.location.pathname === p);
         if (!isPublic) {
+          localStorage.removeItem('auth_token');
           window.location.href = '/login';
         }
       }
@@ -33,4 +38,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 

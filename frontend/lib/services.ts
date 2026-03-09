@@ -8,8 +8,14 @@ import {
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  login: (username: string, password: string) =>
-    api.post<{ user: User; token: string }>('/auth/login', { username, password }),
+  login: async (username: string, password: string) => {
+    const res = await api.post<{ user: User; token: string }>('/auth/login', { username, password });
+    // Save token to localStorage so the request interceptor can use it
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', res.data.token);
+    }
+    return res;
+  },
 
   logout: () => api.post('/auth/logout'),
 
