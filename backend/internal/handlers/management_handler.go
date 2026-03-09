@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ManagementHandler struct {
@@ -177,7 +178,8 @@ func (h *ManagementHandler) GetAllUsers(c *gin.Context) {
 	if role != "" {
 		users, err = h.mgmtRepo.GetUsersByRole(c.Request.Context(), role)
 	} else {
-		users, err = h.mgmtRepo.GetAllUsers(c.Request.Context())
+		// Include inactive users so admin can manage/reactivate them
+		users, err = h.mgmtRepo.GetAllUsersIncludingInactive(c.Request.Context())
 	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -187,6 +189,32 @@ func (h *ManagementHandler) GetAllUsers(c *gin.Context) {
 		users = []models.User{}
 	}
 	c.JSON(http.StatusOK, users)
+}
+
+func (h *ManagementHandler) CreateUser(c *gin.Context) {
+	var input repositories.CreateUserInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if input.Username == "" || input.Password == "" || input.FullName == "" || input.Role == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username, password, full_name and role are required"})
+		return
+	}
+
+	// Hash the password
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		return
+	}
+
+	user, err := h.mgmtRepo.CreateUser(c.Request.Context(), &input, string(hash))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, user)
 }
 
 func (h *ManagementHandler) DeactivateUser(c *gin.Context) {
@@ -200,6 +228,19 @@ func (h *ManagementHandler) DeactivateUser(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "user deactivated"})
+}
+
+func (h *ManagementHandler) ReactivateUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if err := h.mgmtRepo.ReactivateUser(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "user reactivated"})
 }
 
 // ─── CLASSES ──────────────────────────────────────────────────────────────────

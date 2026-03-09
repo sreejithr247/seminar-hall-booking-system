@@ -111,7 +111,9 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 				admin.DELETE("/halls/:id", mgmtHandler.DeleteHall)
 				// User management
 				admin.GET("/users", mgmtHandler.GetAllUsers)
+				admin.POST("/users", mgmtHandler.CreateUser)
 				admin.DELETE("/users/:id", mgmtHandler.DeactivateUser)
+				admin.PATCH("/users/:id/reactivate", mgmtHandler.ReactivateUser)
 				// Club management
 				admin.POST("/clubs", mgmtHandler.CreateClub)
 				admin.DELETE("/clubs/:id", mgmtHandler.DeleteClub)

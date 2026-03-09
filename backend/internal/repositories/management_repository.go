@@ -132,6 +132,53 @@ func (r *ManagementRepository) DeactivateUser(ctx context.Context, id int) error
 	return err
 }
 
+func (r *ManagementRepository) ReactivateUser(ctx context.Context, id int) error {
+	_, err := r.db.Exec(ctx, `UPDATE users SET is_active = true WHERE user_id = $1`, id)
+	return err
+}
+
+type CreateUserInput struct {
+	Username  string  `json:"username"`
+	Password  string  `json:"password"`
+	FullName  string  `json:"full_name"`
+	Email     *string `json:"email"`
+	Phone     *string `json:"phone"`
+	Role      string  `json:"role"`
+	DeptID    *int    `json:"dept_id"`
+}
+
+func (r *ManagementRepository) CreateUser(ctx context.Context, input *CreateUserInput, passwordHash string) (*models.User, error) {
+	var u models.User
+	err := r.db.QueryRow(ctx,
+		`INSERT INTO users (username, password_hash, full_name, email, phone, role, dept_id, is_active)
+		 VALUES ($1, $2, $3, $4, $5, $6::USER_ROLE, $7, true)
+		 RETURNING user_id, username, password_hash, full_name, email, phone, role, dept_id, is_active, created_at, updated_at`,
+		input.Username, passwordHash, input.FullName, input.Email, input.Phone, input.Role, input.DeptID,
+	).Scan(&u.UserID, &u.Username, &u.PasswordHash, &u.FullName, &u.Email, &u.Phone, &u.Role, &u.DeptID, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
+	return &u, err
+}
+
+func (r *ManagementRepository) GetAllUsersIncludingInactive(ctx context.Context) ([]models.User, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT user_id, username, password_hash, full_name, email, phone, role, dept_id, is_active, created_at, updated_at
+		 FROM users ORDER BY is_active DESC, full_name`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.UserID, &u.Username, &u.PasswordHash, &u.FullName, &u.Email, &u.Phone, &u.Role, &u.DeptID, &u.IsActive, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
 // ─── CLASSES ─────────────────────────────────────────────────────────────────
 
 func (r *ManagementRepository) GetClassesByDept(ctx context.Context, deptID int) ([]models.Class, error) {
