@@ -151,7 +151,7 @@ func (r *ManagementRepository) CreateUser(ctx context.Context, input *CreateUser
 	var u models.User
 	err := r.db.QueryRow(ctx,
 		`INSERT INTO users (username, password_hash, full_name, email, phone, role, dept_id, is_active)
-		 VALUES ($1, $2, $3, $4, $5, $6::USER_ROLE, $7, true)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, true)
 		 RETURNING user_id, username, password_hash, full_name, email, phone, role, dept_id, is_active, created_at, updated_at`,
 		input.Username, passwordHash, input.FullName, input.Email, input.Phone, input.Role, input.DeptID,
 	).Scan(&u.UserID, &u.Username, &u.PasswordHash, &u.FullName, &u.Email, &u.Phone, &u.Role, &u.DeptID, &u.IsActive, &u.CreatedAt, &u.UpdatedAt)
