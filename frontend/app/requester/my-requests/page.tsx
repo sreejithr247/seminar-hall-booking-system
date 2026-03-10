@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { requestsApi } from '@/lib/services';
 import { Request } from '@/lib/types';
+import { formatDate, formatTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function MyRequestsPage() {
@@ -70,7 +71,7 @@ export default function MyRequestsPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold text-gray-800 text-lg">{req.event_title}</h3>
-                    <p className="text-sm text-gray-500">{req.event_date} &bull; {req.start_time} – {req.end_time}</p>
+                    <p className="text-sm text-gray-500">{formatDate(req.event_date)} &bull; {formatTime(req.start_time)} – {formatTime(req.end_time)}</p>
                     {req.purpose && <p className="text-sm text-gray-600 mt-1">Purpose: {req.purpose}</p>}
                   </div>
                   <div className="flex flex-col items-end gap-2 text-xs font-medium">

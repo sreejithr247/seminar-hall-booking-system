@@ -8,6 +8,7 @@ import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { api } from '@/lib/api';
 import { Booking, Hall } from '@/lib/types';
+import { formatTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const localizer = momentLocalizer(moment);
@@ -119,7 +120,7 @@ export default function HallCalendarPage() {
                 <div key={booking.booking_id} className="p-3 bg-blue-50 rounded">
                   <p className="font-semibold">{booking.event_title}</p>
                   <p className="text-sm text-gray-600">
-                    {booking.start_time} - {booking.end_time}
+                    {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                   </p>
                 </div>
               ))}

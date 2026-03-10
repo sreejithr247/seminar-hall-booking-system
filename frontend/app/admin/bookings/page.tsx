@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { bookingsApi } from '@/lib/services';
 import { Booking } from '@/lib/types';
+import { formatDate, formatTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function AdminBookingsPage() {
@@ -68,7 +69,7 @@ export default function AdminBookingsPage() {
               <div key={b.booking_id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-800">{b.event_title}</h3>
-                  <p className="text-sm text-gray-500">{b.event_date} &bull; {b.start_time} – {b.end_time}</p>
+                  <p className="text-sm text-gray-500">{formatDate(b.event_date)} &bull; {formatTime(b.start_time)} – {formatTime(b.end_time)}</p>
                   <span className={`mt-2 inline-block text-xs font-medium px-2 py-1 rounded-full ${statusColor[b.status]}`}>{b.status}</span>
                 </div>
                 {b.status === 'confirmed' && (
