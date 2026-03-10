@@ -28,7 +28,9 @@ api.interceptors.response.use(
       // Only redirect if we're on a protected page (not on login or public pages)
       if (typeof window !== 'undefined') {
         const publicPaths = ['/login', '/', '/halls'];
-        const isPublic = publicPaths.some((p) => window.location.pathname === p);
+        const isPublic = publicPaths.some((p) => 
+          window.location.pathname === p || window.location.pathname.startsWith(`${p}/`)
+        );
         if (!isPublic) {
           localStorage.removeItem('auth_token');
           window.location.href = '/login';

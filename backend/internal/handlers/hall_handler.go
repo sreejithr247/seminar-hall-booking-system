@@ -27,6 +27,29 @@ func (h *HallHandler) GetAllHalls(c *gin.Context) {
 	c.JSON(http.StatusOK, halls)
 }
 
+// GetHallByID returns details for a single hall
+func (h *HallHandler) GetHallByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid hall id"})
+		return
+	}
+
+	hall, err := h.hallService.GetHallByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch hall details"})
+		return
+	}
+
+	if hall == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "hall not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, hall)
+}
+
 // GetAvailability returns bookings for a hall (if hall_id provided) or all halls (if hall_id omitted) on a specific date
 func (h *HallHandler) GetAvailability(c *gin.Context) {
 	hallIDStr := c.Query("hall_id")

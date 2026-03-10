@@ -83,6 +83,12 @@ export default function LoginPage() {
             Contact Admin
           </Link>
         </p>
+        <div className="mt-6 text-center">
+          <Link href="/" className="text-gray-500 hover:text-blue-600 flex items-center justify-center gap-2 group transition-colors">
+            <span className="group-hover:-translate-x-1 transition-transform">←</span>
+            Back to Home
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -51,6 +51,7 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 		public := api.Group("")
 		{
 			public.GET("/halls", hallHandler.GetAllHalls)
+			public.GET("/halls/:id", hallHandler.GetHallByID)
 			public.GET("/availability", hallHandler.GetAvailability)
 			public.GET("/departments", mgmtHandler.GetDepartments)
 			public.GET("/clubs", mgmtHandler.GetClubs)

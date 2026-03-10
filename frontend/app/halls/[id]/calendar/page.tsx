@@ -24,24 +24,30 @@ export default function HallCalendarPage() {
 
   useEffect(() => {
     fetchHall();
+  }, [hallId]);
+
+  useEffect(() => {
     fetchBookings();
   }, [hallId, selectedDate]);
 
   const fetchHall = async () => {
+    if (!hallId) return;
     try {
       const response = await api.get(`/halls/${hallId}`);
       setHall(response.data);
-    } catch (error) {
+    } catch (error: any) {
       toast.error('Failed to fetch hall details');
     }
   };
 
   const fetchBookings = async () => {
+    if (!hallId) return;
     try {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const response = await api.get(`/availability?date=${dateStr}`);
-      const hallBookings = response.data.find((slot: any) => slot.hall_id === parseInt(hallId));
-      setBookings(hallBookings?.bookings || []);
+      const dateStr = moment(selectedDate).format('YYYY-MM-DD');
+      // Pass hall_id to get only this hall's bookings
+      const response = await api.get(`/availability?date=${dateStr}&hall_id=${hallId}`);
+      // The API returns an array of bookings directly when hall_id is provided
+      setBookings(response.data);
     } catch (error) {
       toast.error('Failed to fetch bookings');
     } finally {
@@ -49,12 +55,15 @@ export default function HallCalendarPage() {
     }
   };
 
-  const events = bookings.map((booking) => ({
-    title: booking.event_title,
-    start: new Date(`${booking.event_date}T${booking.start_time}`),
-    end: new Date(`${booking.event_date}T${booking.end_time}`),
-    resource: booking,
-  }));
+  const events = bookings.map((booking) => {
+    const datePart = booking.event_date.split('T')[0];
+    return {
+      title: booking.event_title,
+      start: moment(`${datePart} ${booking.start_time}`).toDate(),
+      end: moment(`${datePart} ${booking.end_time}`).toDate(),
+      resource: booking,
+    };
+  });
 
   if (loading) {
     return (
@@ -92,8 +101,8 @@ export default function HallCalendarPage() {
           </label>
           <input
             type="date"
-            value={selectedDate.toISOString().split('T')[0]}
-            onChange={(e) => setSelectedDate(new Date(e.target.value))}
+            value={moment(selectedDate).format('YYYY-MM-DD')}
+            onChange={(e) => setSelectedDate(moment(e.target.value).toDate())}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
