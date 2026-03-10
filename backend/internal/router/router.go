@@ -32,7 +32,7 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 	// Initialize Services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	hallService := services.NewHallService(hallRepo)
-	requestService := services.NewRequestService(requestRepo, hallRepo, userRepo)
+	requestService := services.NewRequestService(requestRepo, hallRepo, userRepo, bookingRepo)
 	coordinatorService := services.NewCoordinatorService(requestRepo, userRepo, bookingRepo)
 	adminService := services.NewAdminService(requestRepo, bookingRepo)
 

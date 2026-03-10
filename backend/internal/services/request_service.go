@@ -12,17 +12,20 @@ type RequestService struct {
 	requestRepo *repositories.RequestRepository
 	hallRepo    *repositories.HallRepository
 	userRepo    *repositories.UserRepository
+	bookingRepo *repositories.BookingRepository
 }
 
 func NewRequestService(
 	reqRepo *repositories.RequestRepository,
 	hallRepo *repositories.HallRepository,
 	userRepo *repositories.UserRepository,
+	bookingRepo *repositories.BookingRepository,
 ) *RequestService {
 	return &RequestService{
 		requestRepo: reqRepo,
 		hallRepo:    hallRepo,
 		userRepo:    userRepo,
+		bookingRepo: bookingRepo,
 	}
 }
 
@@ -67,7 +70,16 @@ func (s *RequestService) CreateRequest(ctx context.Context, userID int, req *mod
 		return errors.New("end time must be strictly after start time")
 	}
 	
-	// 5. Build and save request
+	// 5. Check for overlapping bookings before placing the request
+	overlap, err := s.bookingRepo.CheckOverlap(ctx, req.HallID, req.EventDate, req.StartTime, req.EndTime)
+	if err != nil {
+		return err
+	}
+	if overlap {
+		return errors.New("cannot place request: this time slot overlaps with an existing confirmed booking")
+	}
+
+	// 6. Build and save request
 	req.RequesterID = requester.RequesterID
 	
 	return s.requestRepo.Create(ctx, req)
