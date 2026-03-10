@@ -301,7 +301,18 @@ func (h *ManagementHandler) DeleteClass(c *gin.Context) {
 // ─── CLUBS ────────────────────────────────────────────────────────────────────
 
 func (h *ManagementHandler) GetClubs(c *gin.Context) {
-	clubs, err := h.mgmtRepo.GetAllClubs(c.Request.Context())
+	deptIDStr := c.Query("dept_id")
+	var deptID *int
+	if deptIDStr != "" {
+		id, err := strconv.Atoi(deptIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dept_id"})
+			return
+		}
+		deptID = &id
+	}
+
+	clubs, err := h.mgmtRepo.GetAllClubs(c.Request.Context(), deptID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -253,10 +253,18 @@ func (r *ManagementRepository) DeleteClass(ctx context.Context, id int) error {
 
 // ─── CLUBS ───────────────────────────────────────────────────────────────────
 
-func (r *ManagementRepository) GetAllClubs(ctx context.Context) ([]models.Club, error) {
-	rows, err := r.db.Query(ctx,
-		`SELECT club_id, club_name, dept_id, description FROM clubs ORDER BY club_name`,
-	)
+func (r *ManagementRepository) GetAllClubs(ctx context.Context, deptID *int) ([]models.Club, error) {
+	query := `SELECT club_id, club_name, dept_id, description FROM clubs`
+	args := []interface{}{}
+
+	if deptID != nil {
+		query += ` WHERE dept_id = $1`
+		args = append(args, *deptID)
+	}
+
+	query += ` ORDER BY club_name`
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -274,6 +282,9 @@ func (r *ManagementRepository) GetAllClubs(ctx context.Context) ([]models.Club, 
 }
 
 func (r *ManagementRepository) CreateClub(ctx context.Context, name string, deptID *int, description *string) (*models.Club, error) {
+	if deptID == nil {
+		return nil, fmt.Errorf("department assignment is mandatory for clubs")
+	}
 	var c models.Club
 	err := r.db.QueryRow(ctx,
 		`INSERT INTO clubs (club_name, dept_id, description) VALUES ($1, $2, $3) RETURNING club_id, club_name, dept_id, description`,

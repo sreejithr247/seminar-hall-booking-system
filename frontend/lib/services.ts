@@ -55,7 +55,7 @@ export const classesApi = {
 // ─── CLUBS ───────────────────────────────────────────────────────────────────
 
 export const clubsApi = {
-  getAll: () => api.get<Club[]>('/clubs'),
+  getAll: (deptId?: number) => api.get<Club[]>(deptId ? `/clubs?dept_id=${deptId}` : '/clubs'),
   create: (data: { club_name: string; dept_id?: number; description?: string }) => api.post<Club>('/clubs', data),
   delete: (id: number) => api.delete(`/clubs/${id}`),
 };
