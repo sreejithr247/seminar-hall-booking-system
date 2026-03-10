@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"seminar-hall-booking-system/internal/models"
+	"time"
 	
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -120,4 +121,25 @@ func (r *BookingRepository) UpdateStatus(ctx context.Context, bookingID int, sta
 	query := `UPDATE bookings SET status = $1 WHERE booking_id = $2`
 	_, err := r.db.Exec(ctx, query, status, bookingID)
 	return err
+}
+
+// CheckOverlap returns true if there's an existing active booking for the same hall and time
+func (r *BookingRepository) CheckOverlap(ctx context.Context, hallID int, date time.Time, startTime string, endTime string) (bool, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM bookings
+		WHERE hall_id = $1
+		  AND event_date = $2
+		  AND status != 'cancelled'
+		  AND (
+			  (start_time < $4 AND end_time > $3)
+		  )
+	`
+	var count int
+	// We use QueryRow to get the count of overlapping bookings
+	err := r.db.QueryRow(ctx, query, hallID, date, startTime, endTime).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

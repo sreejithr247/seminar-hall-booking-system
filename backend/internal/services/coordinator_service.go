@@ -10,12 +10,14 @@ import (
 type CoordinatorService struct {
 	requestRepo *repositories.RequestRepository
 	userRepo    *repositories.UserRepository
+	bookingRepo *repositories.BookingRepository
 }
 
-func NewCoordinatorService(reqRepo *repositories.RequestRepository, userRepo *repositories.UserRepository) *CoordinatorService {
+func NewCoordinatorService(reqRepo *repositories.RequestRepository, userRepo *repositories.UserRepository, bookingRepo *repositories.BookingRepository) *CoordinatorService {
 	return &CoordinatorService{
 		requestRepo: reqRepo,
 		userRepo:    userRepo,
+		bookingRepo: bookingRepo,
 	}
 }
 
@@ -58,6 +60,14 @@ func (s *CoordinatorService) ReviewRequest(ctx context.Context, coordinatorID in
 	// 3. Update status
 	var newStatus models.ApprovalStatus
 	if action == "approve" {
+		// Before forwarding, check if there's an existing overlapping booking
+		overlap, err := s.bookingRepo.CheckOverlap(ctx, req.HallID, req.EventDate, req.StartTime, req.EndTime)
+		if err != nil {
+			return err
+		}
+		if overlap {
+			return errors.New("cannot forward: this request overlaps with an existing confirmed booking")
+		}
 		newStatus = models.StatusForwarded
 	} else if action == "reject" {
 		newStatus = models.StatusRejected

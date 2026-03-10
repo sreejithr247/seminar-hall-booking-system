@@ -42,6 +42,15 @@ func (s *AdminService) ReviewRequest(ctx context.Context, adminID int, requestID
 	if action == "approve" {
 		newStatus = models.StatusApproved
 		
+		// Before approving, check if there's an existing overlapping booking
+		overlap, err := s.bookingRepo.CheckOverlap(ctx, req.HallID, req.EventDate, req.StartTime, req.EndTime)
+		if err != nil {
+			return err
+		}
+		if overlap {
+			return errors.New("cannot approve: this request overlaps with an existing confirmed booking")
+		}
+
 		// Attempt to create the final booking.
 		// NOTE: If an overlap exists, the PostgreSQL trigger 'check_booking_overlap' will abort this query and return a database error.
 		booking := &models.Booking{

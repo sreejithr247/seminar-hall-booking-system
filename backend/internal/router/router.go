@@ -33,7 +33,7 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	hallService := services.NewHallService(hallRepo)
 	requestService := services.NewRequestService(requestRepo, hallRepo, userRepo)
-	coordinatorService := services.NewCoordinatorService(requestRepo, userRepo)
+	coordinatorService := services.NewCoordinatorService(requestRepo, userRepo, bookingRepo)
 	adminService := services.NewAdminService(requestRepo, bookingRepo)
 
 	// Initialize Handlers
