@@ -26,7 +26,7 @@ func (r *ManagementRepository) GetAllDepartments(ctx context.Context) ([]models.
 	}
 	defer rows.Close()
 
-	var depts []models.Department
+	depts := []models.Department{}
 	for rows.Next() {
 		var d models.Department
 		if err := rows.Scan(&d.DeptID, &d.DeptName, &d.DeptCode, &d.CreatedAt); err != nil {
@@ -226,7 +226,7 @@ func (r *ManagementRepository) GetClassesByDept(ctx context.Context, deptID int)
 	}
 	defer rows.Close()
 
-	var classes []models.Class
+	classes := []models.Class{}
 	for rows.Next() {
 		var c models.Class
 		if err := rows.Scan(&c.ClassID, &c.ClassName, &c.DeptID, &c.Year); err != nil {
@@ -270,7 +270,7 @@ func (r *ManagementRepository) GetAllClubs(ctx context.Context, deptID *int) ([]
 	}
 	defer rows.Close()
 
-	var clubs []models.Club
+	clubs := []models.Club{}
 	for rows.Next() {
 		var c models.Club
 		if err := rows.Scan(&c.ClubID, &c.ClubName, &c.DeptID, &c.Description); err != nil {
@@ -313,7 +313,7 @@ func (r *ManagementRepository) GetHallUsageReport(ctx context.Context) ([]models
 	}
 	defer rows.Close()
 
-	var reports []models.HallUsageReport
+	reports := []models.HallUsageReport{}
 	for rows.Next() {
 		var rep models.HallUsageReport
 		if err := rows.Scan(&rep.HallID, &rep.HallName, &rep.TotalBookings); err != nil {
@@ -339,7 +339,7 @@ func (r *ManagementRepository) GetDepartmentUsageReport(ctx context.Context) ([]
 	}
 	defer rows.Close()
 
-	var reports []models.DepartmentUsageReport
+	reports := []models.DepartmentUsageReport{}
 	for rows.Next() {
 		var rep models.DepartmentUsageReport
 		if err := rows.Scan(&rep.DeptID, &rep.DeptName, &rep.TotalRequests); err != nil {

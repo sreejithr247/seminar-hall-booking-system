@@ -55,7 +55,7 @@ export default function HallCalendarPage() {
     }
   };
 
-  const events = bookings.map((booking) => {
+  const events = (bookings || []).map((booking) => {
     const datePart = booking.event_date.split('T')[0];
     return {
       title: booking.event_title,
@@ -121,11 +121,11 @@ export default function HallCalendarPage() {
           />
         </div>
 
-        {bookings.length > 0 && (
+        {(bookings || []).length > 0 && (
           <div className="mt-6 bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold text-blue-900 mb-4">Bookings for {selectedDate.toLocaleDateString()}</h2>
             <div className="space-y-2">
-              {bookings.map((booking) => (
+              {(bookings || []).map((booking) => (
                 <div key={booking.booking_id} className="p-3 bg-blue-50 rounded">
                   <p className="font-semibold">{booking.event_title}</p>
                   <p className="text-sm text-gray-600">

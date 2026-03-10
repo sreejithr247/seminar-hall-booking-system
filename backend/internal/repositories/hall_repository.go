@@ -30,7 +30,7 @@ func (r *HallRepository) GetAll(ctx context.Context) ([]models.Hall, error) {
 	}
 	defer rows.Close()
 
-	var halls []models.Hall
+	halls := []models.Hall{}
 	for rows.Next() {
 		var hall models.Hall
 		err := rows.Scan(
@@ -92,7 +92,7 @@ func (r *HallRepository) GetAvailability(ctx context.Context, hallID int, date t
 	}
 	defer rows.Close()
 
-	var bookings []models.Booking
+	bookings := []models.Booking{}
 	for rows.Next() {
 		var b models.Booking
 		err := rows.Scan(
