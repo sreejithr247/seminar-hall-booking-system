@@ -116,6 +116,38 @@ func (r *HallRepository) GetAvailability(ctx context.Context, hallID int, date t
 
 	return bookings, nil
 }
+
+// GetAvailabilityRange gets all confirmed bookings for a specific hall between two dates
+func (r *HallRepository) GetAvailabilityRange(ctx context.Context, hallID int, startDate time.Time, endDate time.Time) ([]models.Booking, error) {
+	query := `
+		SELECT booking_id, request_id, hall_id, requester_id, event_title, event_date, start_time, end_time, status, created_at, completed_at
+		FROM bookings
+		WHERE hall_id = $1 AND event_date BETWEEN $2 AND $3 AND status != 'cancelled'
+		ORDER BY event_date ASC, start_time ASC
+	`
+
+	rows, err := r.db.Query(ctx, query, hallID, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	bookings := []models.Booking{}
+	for rows.Next() {
+		var b models.Booking
+		err := rows.Scan(
+			&b.BookingID, &b.RequestID, &b.HallID, &b.RequesterID,
+			&b.EventTitle, &b.EventDate, &b.StartTime, &b.EndTime,
+			&b.Status, &b.CreatedAt, &b.CompletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, b)
+	}
+
+	return bookings, nil
+}
 // GetAvailabilityForAll gets confirmed bookings for ALL active halls on a specific date
 func (r *HallRepository) GetAvailabilityForAll(ctx context.Context, date time.Time) ([]models.AvailabilitySlot, error) {
 	// 1. Get all active halls

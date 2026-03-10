@@ -42,3 +42,16 @@ func (s *HallService) GetAvailabilityForAll(ctx context.Context, dateStr string)
 	
 	return s.hallRepo.GetAvailabilityForAll(ctx, date)
 }
+
+func (s *HallService) GetAvailabilityRange(ctx context.Context, hallID int, startDateStr string, endDateStr string) ([]models.Booking, error) {
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		return nil, err
+	}
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		return nil, err
+	}
+	
+	return s.hallRepo.GetAvailabilityRange(ctx, hallID, startDate, endDate)
+}

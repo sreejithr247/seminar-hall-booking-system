@@ -21,6 +21,7 @@ export default function HallCalendarPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [view, setView] = useState<View>('day');
 
   useEffect(() => {
     fetchHall();
@@ -43,11 +44,12 @@ export default function HallCalendarPage() {
   const fetchBookings = async () => {
     if (!hallId) return;
     try {
-      const dateStr = moment(selectedDate).format('YYYY-MM-DD');
-      // Pass hall_id to get only this hall's bookings
-      const response = await api.get(`/availability?date=${dateStr}&hall_id=${hallId}`);
-      // The API returns an array of bookings directly when hall_id is provided
-      setBookings(response.data);
+      // Fetch for the whole month surrounding selectedDate to be safe regardless of view
+      const startOfMonth = moment(selectedDate).startOf('month').format('YYYY-MM-DD');
+      const endOfMonth = moment(selectedDate).endOf('month').format('YYYY-MM-DD');
+      
+      const response = await api.get(`/availability?start_date=${startOfMonth}&end_date=${endOfMonth}&hall_id=${hallId}`);
+      setBookings(response.data || []);
     } catch (error) {
       toast.error('Failed to fetch bookings');
     } finally {
@@ -114,18 +116,19 @@ export default function HallCalendarPage() {
             startAccessor="start"
             endAccessor="end"
             style={{ height: '100%' }}
-            defaultView="day"
+            view={view}
+            onView={(newView) => setView(newView)}
             views={['day', 'week', 'month']}
             date={selectedDate}
             onNavigate={(date) => setSelectedDate(date)}
           />
         </div>
 
-        {(bookings || []).length > 0 && (
+        {(bookings || []).length > 0 && view === 'day' && (
           <div className="mt-6 bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold text-blue-900 mb-4">Bookings for {selectedDate.toLocaleDateString()}</h2>
             <div className="space-y-2">
-              {(bookings || []).map((booking) => (
+              {(bookings || []).filter(b => b.event_date.split('T')[0] === moment(selectedDate).format('YYYY-MM-DD')).map((booking) => (
                 <div key={booking.booking_id} className="p-3 bg-blue-50 rounded">
                   <p className="font-semibold">{booking.event_title}</p>
                   <p className="text-sm text-gray-600">

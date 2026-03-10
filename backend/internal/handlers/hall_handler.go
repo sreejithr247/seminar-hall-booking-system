@@ -54,9 +54,11 @@ func (h *HallHandler) GetHallByID(c *gin.Context) {
 func (h *HallHandler) GetAvailability(c *gin.Context) {
 	hallIDStr := c.Query("hall_id")
 	dateStr := c.Query("date") // Format: YYYY-MM-DD
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
 	
-	if dateStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "date query parameter is required"})
+	if dateStr == "" && (startDateStr == "" || endDateStr == "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "date or (start_date and end_date) query parameters are required"})
 		return
 	}
 	
@@ -68,6 +70,18 @@ func (h *HallHandler) GetAvailability(c *gin.Context) {
 			return
 		}
 		
+		// If range is provided
+		if startDateStr != "" && endDateStr != "" {
+			bookings, err := h.hallService.GetAvailabilityRange(c.Request.Context(), hallID, startDateStr, endDateStr)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to fetch range availability. Use YYYY-MM-DD."})
+				return
+			}
+			c.JSON(http.StatusOK, bookings)
+			return
+		}
+
+		// Fallback to single date
 		bookings, err := h.hallService.GetAvailability(c.Request.Context(), hallID, dateStr)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to fetch availability. Use YYYY-MM-DD."})
