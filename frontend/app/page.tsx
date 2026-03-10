@@ -71,11 +71,19 @@ export default function Home() {
           {availability.length > 0 && (
             <div className="space-y-2">
               {availability.map((slot) => (
-                <div key={slot.hall_id} className="p-3 bg-blue-50 rounded">
-                  <p className="font-semibold">{slot.hall_name}</p>
-                  <p className="text-sm text-gray-600">
-                    {(slot.bookings ?? []).length} booking(s) on this date
-                  </p>
+                <div key={slot.hall_id} className="p-3 bg-blue-50 rounded flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold">{slot.hall_name}</p>
+                    <p className="text-sm text-gray-600">
+                      {(slot.bookings ?? []).length} booking(s) on this date
+                    </p>
+                  </div>
+                  <Link
+                    href={`/halls/${slot.hall_id}/calendar`}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap"
+                  >
+                    View Calendar →
+                  </Link>
                 </div>
               ))}
             </div>

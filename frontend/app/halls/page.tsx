@@ -59,15 +59,22 @@ export default function HallsPage() {
                 <strong>Capacity:</strong> {hall.capacity} people
               </p>
               {hall.location && (
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 mb-2">
                   <strong>Location:</strong> {hall.location}
                 </p>
               )}
+              <div className="flex flex-wrap gap-1 mb-4">
+                {Object.entries(hall.facilities || {}).map(([f, v]) => v && (
+                  <span key={f} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 uppercase">
+                    {f.replace('_', ' ')}
+                  </span>
+                ))}
+              </div>
               <Link
                 href={`/halls/${hall.hall_id}/calendar`}
-                className="text-blue-600 hover:underline inline-block"
+                className="text-blue-600 hover:underline inline-block font-medium"
               >
-                View Calendar →
+                View Availability →
               </Link>
             </div>
           ))}
