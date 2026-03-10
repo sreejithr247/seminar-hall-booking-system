@@ -89,12 +89,12 @@ export default function HallCalendarPage() {
               </p>
             )}
           </div>
-          <Link
-            href="/halls"
-            className="text-blue-600 hover:underline"
+          <button
+            onClick={() => router.back()}
+            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
           >
-            ← Back to Halls
-          </Link>
+            ← Back
+          </button>
         </div>
 
         <div className="bg-white p-4 rounded-lg shadow-md mb-6">

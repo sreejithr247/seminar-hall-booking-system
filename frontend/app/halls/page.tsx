@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Hall } from '@/lib/types';
 import { toast } from 'sonner';
 
 export default function HallsPage() {
+  const router = useRouter();
   const [halls, setHalls] = useState<Hall[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,12 +40,12 @@ export default function HallsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-blue-900">Seminar Halls</h1>
-          <Link
-            href="/"
-            className="text-blue-600 hover:underline"
+          <button
+            onClick={() => router.back()}
+            className="text-blue-600 hover:underline font-medium"
           >
-            ← Back to Home
-          </Link>
+            ← Back
+          </button>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
