@@ -171,6 +171,9 @@ func (r *ManagementRepository) CreateUser(ctx context.Context, input *CreateUser
 
 	// If role is requester, also register as requester
 	if input.Role == "requester" {
+		if input.DeptID == nil {
+			return nil, fmt.Errorf("department assignment is mandatory for requester role")
+		}
 		if input.RequesterType == "" {
 			return nil, fmt.Errorf("requester_type is required for requester role")
 		}

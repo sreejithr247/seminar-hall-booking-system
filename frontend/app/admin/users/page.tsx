@@ -183,10 +183,14 @@ export default function AdminUsersPage() {
               </div>
               {needsDept && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Department {form.role === 'requester' ? '*' : ''}
+                  </label>
+                  <select 
+                    required={form.role === 'requester'}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                     value={form.dept_id} onChange={(e) => setForm({ ...form, dept_id: e.target.value })}>
-                    <option value="">None</option>
+                    <option value="">Select Department</option>
                     {departments.map((d) => <option key={d.dept_id} value={d.dept_id}>{d.dept_name}</option>)}
                   </select>
                 </div>
