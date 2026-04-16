@@ -13,10 +13,9 @@ import (
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
-	}
+	// Load environment variables (.env only — not .env.production; that file is for deploy docs / hosts)
+	_ = godotenv.Load(".env")
+	_ = godotenv.Overload(".env.local")
 
 	// Load configuration
 	cfg := config.Load()
