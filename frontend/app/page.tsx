@@ -28,7 +28,7 @@ export default function Home() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-blue-900 mb-4">
-            Seminar Hall Booking System
+            Seminar Hall Booking Systemssssssssssssssss
           </h1>
           <p className="text-xl text-gray-600 mb-8">
             Book seminar halls for your classes and events
