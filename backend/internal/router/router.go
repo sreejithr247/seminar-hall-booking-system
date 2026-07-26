@@ -66,6 +66,7 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 			protectedAuth := auth.Group("")
 			protectedAuth.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 			protectedAuth.GET("/me", authHandler.GetMe)
+			protectedAuth.PATCH("/password", authHandler.ChangePassword)
 		}
 
 		// Protected routes
@@ -120,6 +121,7 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 				admin.POST("/users", mgmtHandler.CreateUser)
 				admin.DELETE("/users/:id", mgmtHandler.DeactivateUser)
 				admin.PATCH("/users/:id/reactivate", mgmtHandler.ReactivateUser)
+				admin.PATCH("/users/:id/password", mgmtHandler.UpdateUserPassword)
 				// Club management (write-only; GET /clubs is public)
 				admin.POST("/clubs", mgmtHandler.CreateClub)
 				admin.DELETE("/clubs/:id", mgmtHandler.DeleteClub)

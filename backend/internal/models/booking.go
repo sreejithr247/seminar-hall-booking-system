@@ -36,6 +36,9 @@ type Request struct {
 	RequestID         int            `json:"request_id"`
 	RequesterID       int            `json:"requester_id"`
 	HallID            int            `json:"hall_id"`
+	HallName          *string        `json:"hall_name,omitempty"`
+	HallLocation      *string        `json:"hall_location,omitempty"`
+	HallCapacity      *int           `json:"hall_capacity,omitempty"`
 	EventTitle        string         `json:"event_title"`
 	EventDescription  *string        `json:"event_description"`
 	EventDate         time.Time      `json:"event_date"`

@@ -39,6 +39,9 @@ export interface Request {
   request_id: number;
   requester_id: number;
   hall_id: number;
+  hall_name?: string;
+  hall_location?: string;
+  hall_capacity?: number;
   event_title: string;
   event_description?: string;
   event_date: string;

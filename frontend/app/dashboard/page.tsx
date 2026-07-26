@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { AvailabilitySlot } from '@/lib/types';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { authApi } from '@/lib/services';
 
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
@@ -16,6 +17,11 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [checking, setChecking] = useState(false);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [pwdCurrent, setPwdCurrent] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -78,6 +84,35 @@ export default function DashboardPage() {
 
   const links = [...commonLinks, ...(roleLinks[user.role] ?? [])];
 
+  const handleOwnPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwdNew.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+    if (pwdNew !== pwdConfirm) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    setPwdSaving(true);
+    try {
+      await authApi.changeOwnPassword(pwdCurrent, pwdNew);
+      toast.success('Password updated. Use it on your next login.');
+      setPwdOpen(false);
+      setPwdCurrent('');
+      setPwdNew('');
+      setPwdConfirm('');
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+          : undefined;
+      toast.error(msg || 'Could not update password');
+    } finally {
+      setPwdSaving(false);
+    }
+  };
+
   const roleLabel: Record<string, string> = {
     admin: 'Administrator',
     dept_coordinator: 'Department Coordinator',
@@ -86,7 +121,77 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
+      {pwdOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
+          <form
+            onSubmit={handleOwnPasswordSubmit}
+            className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-md p-6"
+          >
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Change your password</h2>
+            <p className="text-sm text-gray-600 mb-4">Enter your current password, then choose a new one.</p>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  value={pwdCurrent}
+                  onChange={(e) => setPwdCurrent(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  value={pwdNew}
+                  onChange={(e) => setPwdNew(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  value={pwdConfirm}
+                  onChange={(e) => setPwdConfirm(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setPwdOpen(false);
+                  setPwdCurrent('');
+                  setPwdNew('');
+                  setPwdConfirm('');
+                }}
+                className="px-4 py-2 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={pwdSaving}
+                className="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+              >
+                {pwdSaving ? 'Saving…' : 'Update password'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
         <div>
@@ -176,7 +281,21 @@ export default function DashboardPage() {
 
           {/* User Profile Info */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-50">Your Profile</h3>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-50">
+              <h3 className="text-lg font-semibold text-gray-700">Your Profile</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setPwdOpen(true);
+                  setPwdCurrent('');
+                  setPwdNew('');
+                  setPwdConfirm('');
+                }}
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
+              >
+                Change password
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
               <div className="flex flex-col">
                 <span className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-0.5">Full Name</span>

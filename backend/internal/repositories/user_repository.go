@@ -106,3 +106,18 @@ func (r *UserRepository) GetRequesterByUserID(ctx context.Context, userID int) (
 
 	return &req, nil
 }
+
+// UpdatePasswordHash updates the bcrypt hash for an active user.
+func (r *UserRepository) UpdatePasswordHash(ctx context.Context, userID int, passwordHash string) error {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2 AND is_active = true`,
+		passwordHash, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}

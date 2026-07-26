@@ -65,6 +65,11 @@ export default function CoordinatorPendingPage() {
                   <div>
                     <h3 className="font-semibold text-gray-800 text-lg">{req.event_title}</h3>
                     <p className="text-sm text-gray-500">{formatDate(req.event_date)} &bull; {formatTime(req.start_time)} – {formatTime(req.end_time)}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Hall: <span className="font-medium">{req.hall_name ?? `Hall #${req.hall_id}`}</span>
+                      {req.hall_location ? ` (${req.hall_location})` : ''}
+                      {req.hall_capacity ? ` • Capacity: ${req.hall_capacity}` : ''}
+                    </p>
                     {req.purpose && <p className="text-sm text-gray-600 mt-1">Purpose: {req.purpose}</p>}
                     {req.expected_attendees && <p className="text-sm text-gray-600">Attendees: {req.expected_attendees}</p>}
                   </div>

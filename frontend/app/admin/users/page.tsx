@@ -44,6 +44,10 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [classes, setClasses] = useState<Class[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [pwdUser, setPwdUser] = useState<User | null>(null);
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -127,6 +131,40 @@ export default function AdminUsersPage() {
     } catch { toast.error('Failed to reactivate'); }
   };
 
+  const openPasswordModal = (u: User) => {
+    setPwdUser(u);
+    setPwdNew('');
+    setPwdConfirm('');
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pwdUser) return;
+    if (pwdNew.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    if (pwdNew !== pwdConfirm) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setPwdSaving(true);
+    try {
+      await usersApi.changePassword(pwdUser.user_id, pwdNew);
+      toast.success(`Password updated for ${pwdUser.full_name}`);
+      setPwdUser(null);
+      setPwdNew('');
+      setPwdConfirm('');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      toast.error(msg || 'Failed to update password');
+    } finally {
+      setPwdSaving(false);
+    }
+  };
+
   const filtered = users.filter((u) =>
     u.full_name.toLowerCase().includes(search.toLowerCase()) ||
     u.username.toLowerCase().includes(search.toLowerCase()) ||
@@ -158,7 +196,65 @@ export default function AdminUsersPage() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-5xl mx-auto px-4 py-6 relative">
+
+        {/* Change password modal */}
+        {pwdUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
+            <form
+              onSubmit={handlePasswordSubmit}
+              className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-md p-6"
+            >
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Set new password</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                User: <span className="font-medium text-gray-800">{pwdUser.full_name}</span>{' '}
+                <span className="text-gray-400">(@{pwdUser.username})</span>
+              </p>
+              <div className="space-y-3 mb-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    minLength={6}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                    value={pwdNew}
+                    onChange={(e) => setPwdNew(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    minLength={6}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                    value={pwdConfirm}
+                    onChange={(e) => setPwdConfirm(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPwdUser(null)}
+                  className="px-4 py-2 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={pwdSaving}
+                  className="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                >
+                  {pwdSaving ? 'Saving…' : 'Update password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Create User Form */}
         {showForm && (
@@ -293,7 +389,7 @@ export default function AdminUsersPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Role</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Email / Phone</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3"></th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -320,20 +416,29 @@ export default function AdminUsersPage() {
                       {u.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    {u.user_id !== user?.user_id && (
-                      u.is_active ? (
-                        <button onClick={() => handleDeactivate(u)}
-                          className="text-red-500 hover:text-red-700 text-xs font-medium px-3 py-1 rounded-lg hover:bg-red-50 transition-colors">
-                          Deactivate
-                        </button>
-                      ) : (
-                        <button onClick={() => handleReactivate(u)}
-                          className="text-green-600 hover:text-green-800 text-xs font-medium px-3 py-1 rounded-lg hover:bg-green-50 transition-colors">
-                          Reactivate
-                        </button>
-                      )
-                    )}
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openPasswordModal(u)}
+                        className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
+                      >
+                        Password
+                      </button>
+                      {u.user_id !== user?.user_id && (
+                        u.is_active ? (
+                          <button type="button" onClick={() => handleDeactivate(u)}
+                            className="text-red-500 hover:text-red-700 text-xs font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => handleReactivate(u)}
+                            className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded-lg hover:bg-green-50 transition-colors">
+                            Reactivate
+                          </button>
+                        )
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

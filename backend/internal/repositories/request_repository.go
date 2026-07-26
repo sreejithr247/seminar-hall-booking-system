@@ -86,12 +86,16 @@ func (r *RequestRepository) GetByID(ctx context.Context, id int) (*models.Reques
 // GetByRequester gets all requests for a specific requester
 func (r *RequestRepository) GetByRequester(ctx context.Context, requesterID int) ([]models.Request, error) {
 	query := `
-		SELECT request_id, requester_id, hall_id, event_title, event_description, event_date, start_time, end_time, 
-		expected_attendees, purpose, dept_status, dept_approved_by, dept_approved_at, dept_remarks, 
-		admin_status, admin_approved_by, admin_approved_at, admin_remarks, requested_at, is_cancelled
-		FROM requests
-		WHERE requester_id = $1
-		ORDER BY requested_at DESC
+		SELECT
+			r.request_id, r.requester_id, r.hall_id,
+			h.hall_name, h.location, h.capacity,
+			r.event_title, r.event_description, r.event_date, r.start_time, r.end_time,
+			r.expected_attendees, r.purpose, r.dept_status, r.dept_approved_by, r.dept_approved_at, r.dept_remarks,
+			r.admin_status, r.admin_approved_by, r.admin_approved_at, r.admin_remarks, r.requested_at, r.is_cancelled
+		FROM requests r
+		JOIN halls h ON h.hall_id = r.hall_id
+		WHERE r.requester_id = $1
+		ORDER BY r.requested_at DESC
 	`
 
 	rows, err := r.db.Query(ctx, query, requesterID)
@@ -107,6 +111,9 @@ func (r *RequestRepository) GetByRequester(ctx context.Context, requesterID int)
 			&req.RequestID,
 			&req.RequesterID,
 			&req.HallID,
+			&req.HallName,
+			&req.HallLocation,
+			&req.HallCapacity,
 			&req.EventTitle,
 			&req.EventDescription,
 			&req.EventDate,
@@ -160,10 +167,14 @@ func (r *RequestRepository) UpdateAdminStatus(ctx context.Context, reqID int, st
 func (r *RequestRepository) GetByDepartmentAndStatus(ctx context.Context, deptID int, status models.ApprovalStatus) ([]models.Request, error) {
 	// A bit tricky because we have to join with requesters -> users to find the dept_id
 	query := `
-		SELECT r.request_id, r.requester_id, r.hall_id, r.event_title, r.event_description, r.event_date, r.start_time, r.end_time, 
-		r.expected_attendees, r.purpose, r.dept_status, r.dept_approved_by, r.dept_approved_at, r.dept_remarks, 
-		r.admin_status, r.admin_approved_by, r.admin_approved_at, r.admin_remarks, r.requested_at, r.is_cancelled
+		SELECT
+			r.request_id, r.requester_id, r.hall_id,
+			h.hall_name, h.location, h.capacity,
+			r.event_title, r.event_description, r.event_date, r.start_time, r.end_time,
+			r.expected_attendees, r.purpose, r.dept_status, r.dept_approved_by, r.dept_approved_at, r.dept_remarks,
+			r.admin_status, r.admin_approved_by, r.admin_approved_at, r.admin_remarks, r.requested_at, r.is_cancelled
 		FROM requests r
+		JOIN halls h ON h.hall_id = r.hall_id
 		JOIN requesters req ON r.requester_id = req.requester_id
 		JOIN users u ON req.user_id = u.user_id
 		WHERE u.dept_id = $1 AND r.dept_status = $2
@@ -183,6 +194,9 @@ func (r *RequestRepository) GetByDepartmentAndStatus(ctx context.Context, deptID
 			&req.RequestID,
 			&req.RequesterID,
 			&req.HallID,
+			&req.HallName,
+			&req.HallLocation,
+			&req.HallCapacity,
 			&req.EventTitle,
 			&req.EventDescription,
 			&req.EventDate,
@@ -212,12 +226,16 @@ func (r *RequestRepository) GetByDepartmentAndStatus(ctx context.Context, deptID
 // GetByAdminStatus gets requests that have a certain admin status (and dept status)
 func (r *RequestRepository) GetByAdminStatus(ctx context.Context, adminStatus models.ApprovalStatus, deptStatus models.ApprovalStatus) ([]models.Request, error) {
 	query := `
-		SELECT request_id, requester_id, hall_id, event_title, event_description, event_date, start_time, end_time, 
-		expected_attendees, purpose, dept_status, dept_approved_by, dept_approved_at, dept_remarks, 
-		admin_status, admin_approved_by, admin_approved_at, admin_remarks, requested_at, is_cancelled
-		FROM requests
-		WHERE admin_status = $1 AND dept_status = $2
-		ORDER BY requested_at ASC
+		SELECT
+			r.request_id, r.requester_id, r.hall_id,
+			h.hall_name, h.location, h.capacity,
+			r.event_title, r.event_description, r.event_date, r.start_time, r.end_time,
+			r.expected_attendees, r.purpose, r.dept_status, r.dept_approved_by, r.dept_approved_at, r.dept_remarks,
+			r.admin_status, r.admin_approved_by, r.admin_approved_at, r.admin_remarks, r.requested_at, r.is_cancelled
+		FROM requests r
+		JOIN halls h ON h.hall_id = r.hall_id
+		WHERE r.admin_status = $1 AND r.dept_status = $2
+		ORDER BY r.requested_at ASC
 	`
 
 	rows, err := r.db.Query(ctx, query, adminStatus, deptStatus)
@@ -233,6 +251,9 @@ func (r *RequestRepository) GetByAdminStatus(ctx context.Context, adminStatus mo
 			&req.RequestID,
 			&req.RequesterID,
 			&req.HallID,
+			&req.HallName,
+			&req.HallLocation,
+			&req.HallCapacity,
 			&req.EventTitle,
 			&req.EventDescription,
 			&req.EventDate,

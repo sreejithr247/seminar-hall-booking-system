@@ -138,6 +138,21 @@ func (r *ManagementRepository) ReactivateUser(ctx context.Context, id int) error
 	return err
 }
 
+// UpdateUserPassword sets a new bcrypt password hash for the user.
+func (r *ManagementRepository) UpdateUserPassword(ctx context.Context, userID int, passwordHash string) error {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2`,
+		passwordHash, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
 type CreateUserInput struct {
 	Username      string  `json:"username"`
 	Password      string  `json:"password"`

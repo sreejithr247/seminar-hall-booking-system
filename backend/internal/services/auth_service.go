@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"seminar-hall-booking-system/internal/models"
 	"seminar-hall-booking-system/internal/repositories"
 	"time"
@@ -10,6 +11,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ErrInvalidCurrentPassword is returned when ChangeOwnPassword verification fails.
+var ErrInvalidCurrentPassword = errors.New("invalid current password")
 
 type AuthService struct {
 	userRepo  *repositories.UserRepository
@@ -56,4 +60,30 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 	}
 
 	return tokenString, user, nil
+}
+
+// ChangeOwnPassword verifies the current password and sets a new bcrypt hash for this user.
+func (s *AuthService) ChangeOwnPassword(ctx context.Context, userID int, currentPassword, newPassword string) error {
+	if len(newPassword) < 6 {
+		return fmt.Errorf("password must be at least 6 characters")
+	}
+
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil || user == nil {
+		return fmt.Errorf("user not found")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword))
+	if err != nil {
+		if user.PasswordHash != currentPassword {
+			return ErrInvalidCurrentPassword
+		}
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return s.userRepo.UpdatePasswordHash(ctx, userID, string(hash))
 }
