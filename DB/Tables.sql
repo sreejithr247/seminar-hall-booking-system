@@ -1,20 +1,11 @@
 -- =============================================
--- SEMINAR HALL BOOKING SYSTEM (FINAL FIXED VERSION)
--- Complete PostgreSQL Schema for IGNOU BCA BCSP-064
--- Topic: 53. Seminar Hall Booking
--- Fix: Removed faulty EXCLUDE; using proven TRIGGER for overlaps
--- Database: PostgreSQL 15+ | Tested Syntax: 100% Clean
+-- SEMINAR HALL BOOKING SYSTEM SCHEMA
 -- =============================================
-
--- Drop existing objects if re-running (for development only)
--- DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
-
 -- 1. Custom ENUM Types
 CREATE TYPE USER_ROLE AS ENUM ('admin', 'dept_coordinator', 'requester', 'faculty');
 CREATE TYPE APPROVAL_STATUS AS ENUM ('pending', 'forwarded', 'approved', 'rejected', 'amended');
 CREATE TYPE BOOKING_STATUS AS ENUM ('confirmed', 'cancelled', 'completed', 'no_show');
 CREATE TYPE REQUESTER_TYPE AS ENUM ('class', 'club');
-
 -- 2. Core Tables
 CREATE TABLE departments (
     dept_id      SERIAL PRIMARY KEY,
@@ -46,7 +37,6 @@ CREATE TABLE halls (
     facilities   JSONB DEFAULT '{}',             -- {"projector": true, "ac": true}
     is_active    BOOLEAN DEFAULT true
 );
-
 -- 3. Users & Requesters (Class or Club representative)
 CREATE TABLE users (
     user_id       SERIAL PRIMARY KEY,
@@ -61,7 +51,6 @@ CREATE TABLE users (
     created_at    TIMESTAMPTZ DEFAULT NOW(),
     updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- One user can represent only ONE entity: either a Class or a Club
 CREATE TABLE requesters (
     requester_id      SERIAL PRIMARY KEY,
@@ -76,7 +65,6 @@ CREATE TABLE requesters (
             (requester_type = 'club' AND club_id IS NOT NULL AND class_id IS NULL)
         )
 );
-
 -- 4. Booking Requests & Workflow
 CREATE TABLE requests (
     request_id          SERIAL PRIMARY KEY,
@@ -101,7 +89,6 @@ CREATE TABLE requests (
     is_cancelled        BOOLEAN DEFAULT false,
     CONSTRAINT valid_time CHECK (end_time > start_time)
 );
-
 -- 5. Final Bookings (only after admin approval)
 CREATE TABLE bookings (
     booking_id     SERIAL PRIMARY KEY,
@@ -117,8 +104,6 @@ CREATE TABLE bookings (
     completed_at   TIMESTAMPTZ,
     CONSTRAINT valid_booking_time CHECK (end_time > start_time)
 );
-
--- FIXED OVERLAP PREVENTION: Trigger function (100% reliable, no syntax issues)
 -- Checks: No other active booking in same hall/date where times overlap
 CREATE OR REPLACE FUNCTION check_booking_overlap()
 RETURNS TRIGGER AS $$
@@ -144,14 +129,12 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 -- Attach trigger to bookings table
 CREATE TRIGGER trig_check_booking_overlap
     BEFORE INSERT OR UPDATE OF start_time, end_time, event_date, hall_id, status
     ON bookings
     FOR EACH ROW
     EXECUTE FUNCTION check_booking_overlap();
-
 -- 6. Audit & Session Management
 CREATE TABLE booking_audit_log (
     log_id      SERIAL PRIMARY KEY,
@@ -184,7 +167,6 @@ CREATE TABLE notifications (
     is_read     BOOLEAN DEFAULT false,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- 7. Indexes for Performance (helps with overlap queries too)
 CREATE INDEX idx_bookings_overlap_check ON bookings (hall_id, event_date, start_time, end_time) WHERE status != 'cancelled';
 CREATE INDEX idx_requests_date_hall ON requests(event_date, hall_id);
@@ -205,46 +187,3 @@ CREATE TRIGGER trig_update_session_activity
     BEFORE UPDATE ON login_sessions
     FOR EACH ROW
     EXECUTE FUNCTION update_session_activity();
-
--- =============================================
--- SAMPLE DATA (Test Overlap Prevention)
--- =============================================
-
--- Insert sample data
-INSERT INTO departments (dept_name, dept_code) VALUES 
-('Computer Science', 'CSE'), ('Electronics', 'ECE');
-
-INSERT INTO classes (class_name, dept_id, year) VALUES 
-('BCA 2023-26', 1, '2023-26');
-
-INSERT INTO clubs (club_name, dept_id) VALUES 
-('Robotics Club', 1);
-
-INSERT INTO users (username, password_hash, full_name, email, role, dept_id) VALUES 
-('admin1', 'hashedpass_admin', 'Admin User', 'admin@college.edu', 'admin', 1),
-('rep1', 'hashedpass_rep', 'Class Rep', 'rep@college.edu', 'requester', 1);
-
-INSERT INTO requesters (user_id, requester_type, class_id) VALUES 
-(2, 'class', 1);  -- User 2 represents Class 1
-
-INSERT INTO halls (hall_name, capacity, location) VALUES
-('Main Seminar Hall', 200, 'Admin Block');
-
--- Create a request and booking (succeeds)
-INSERT INTO requests (requester_id, hall_id, event_title, event_date, start_time, end_time, expected_attendees, purpose) VALUES
-(1, 1, 'Test Event 1', '2025-12-01', '09:00:00', '10:00:00', 50, 'Department Meeting');
-
-INSERT INTO bookings (request_id, hall_id, requester_id, event_title, event_date, start_time, end_time) VALUES
-(1, 1, 1, 'Test Event 1', '2025-12-01', '09:00:00', '10:00:00');  -- Succeeds
-
--- This NEXT INSERT WILL FAIL with overlap error (uncomment to test):
--- INSERT INTO bookings (request_id, hall_id, requester_id, event_title, event_date, start_time, end_time) VALUES
--- (2, 1, 1, 'Overlapping Test', '2025-12-01', '09:30:00', '11:00:00');  -- ERROR: Overlap detected!
-
--- Success message
-\echo '================================================'
-\echo 'Seminar Hall Booking System Schema Created SUCCESSFULLY!'
-\echo 'No Syntax Errors | Overlap Prevention: Trigger Active'
-\echo 'Ready for BCSP-064: Test with sample data above'
-\echo 'Current Date: November 28, 2025 (as per context)'
-\echo '================================================'

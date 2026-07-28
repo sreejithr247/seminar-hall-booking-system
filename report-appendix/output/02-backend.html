@@ -5,39 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Project Coding — Backend source (Go)</title>
   <style>
-@page { size: A4; margin: 11mm 9mm 14mm 32mm; }
+@page { size: A4; margin: 9mm 8mm 12mm 30mm; }
 * { box-sizing: border-box; }
 body {
   font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
-  font-size: 8pt;
-  line-height: 1.24;
+  font-size: 7.5pt;
+  line-height: 1.14;
   color: #111;
   max-width: 100%;
 }
-h1 { font-size: 11pt; margin: 0 0 0.35em; }
+h1 { font-size: 10.5pt; margin: 0 0 0.3em; }
 .github-notice {
-  font-size: 8pt;
+  font-size: 7.5pt;
   background: #f5f5f5;
   border: 1px solid #ddd;
-  padding: 0.5em 0.75em;
-  margin-bottom: 0.9em;
+  padding: 0.4em 0.65em;
+  margin-bottom: 0.7em;
   page-break-inside: avoid;
 }
 .github-notice strong { font-weight: 600; }
-.meta { font-size: 8pt; color: #444; margin-bottom: 0.85em; }
-.file-block { margin-bottom: 0.85em; }
+.meta { font-size: 7.5pt; color: #444; margin-bottom: 0.55em; }
+.file-block { margin-bottom: 0.45em; }
 .file-path {
   font-weight: bold;
-  font-size: 8pt;
-  margin: 0.65em 0 0.25em;
-  padding-bottom: 0.15em;
+  font-size: 7.5pt;
+  margin: 0.4em 0 0.15em;
+  padding-bottom: 0.1em;
   border-bottom: 1px solid #ccc;
   page-break-after: avoid;
 }
 .part-heading {
-  font-size: 11pt;
-  margin: 1.1em 0 0.35em;
-  padding-bottom: 0.2em;
+  font-size: 10.5pt;
+  margin: 0.75em 0 0.25em;
+  padding-bottom: 0.12em;
   border-bottom: 2px solid #888;
   page-break-before: always;
   page-break-after: avoid;
@@ -47,23 +47,25 @@ h1 { font-size: 11pt; margin: 0 0 0.35em; }
   margin-top: 0;
 }
 .part-meta {
-  font-size: 8pt;
+  font-size: 7.5pt;
   color: #444;
-  margin: 0 0 0.9em;
+  margin: 0 0 0.55em;
 }
 pre {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;
+  orphans: 3;
+  widows: 3;
 }
 </style>
 </head>
 <body>
   <h1>Project Coding — Backend source (Go)</h1>
-  <p class="meta">Seminar Hall Booking System — representative .go sources (full repo on GitHub)</p>
+  <p class="meta">Seminar Hall Booking System — key Go segments (auth, requests, approval; full repo on GitHub)</p>
   <div class="github-notice">
-    <strong>Full source code</strong> — Included representative code segments only (routing, auth, halls, requests, coordinator workflow). Admin/management handlers and other pages follow the same patterns.
+    <strong>Full source code</strong> — Included the most important code segments only (core schema, routing, JWT auth, request creation, department approval, overlap checks, and key UI logic). Omitted lines are marked with // ... or -- .... Full sources are on GitHub.
     Repository: <a href="https://github.com/sreejithr247/seminar-hall-booking-system">https://github.com/sreejithr247/seminar-hall-booking-system</a>.
   </div>
   <section class="file-block"><div class="file-path">backend/main.go</div><pre>package main
@@ -114,6 +116,78 @@ func main() {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
+</pre></section>
+
+  <section class="file-block"><div class="file-path">backend/internal/config/config.go</div><pre>package config
+
+import (
+	"os"
+)
+
+type Config struct {
+	DatabaseURL  string
+	JWTSecret    string
+	Environment  string
+	FrontendURL  string
+	Port         string
+}
+
+func Load() *Config {
+	return &amp;Config{
+		DatabaseURL: getEnv("DATABASE_URL", "postgresql://localhost:5432/seminar_hall_db?sslmode=disable"),
+		JWTSecret:    getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		Environment:  getEnv("ENVIRONMENT", "development"),
+		FrontendURL:  getEnv("FRONTEND_URL", "http://localhost:3000"),
+		Port:         getEnv("PORT", "8080"),
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+</pre></section>
+
+  <section class="file-block"><div class="file-path">backend/internal/database/database.go</div><pre>package database
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// NewConnection creates a new PostgreSQL connection pool
+func NewConnection(databaseURL string) (*pgxpool.Pool, error) {
+	config, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse database URL: %w", err)
+	}
+
+	// Explicitly set search_path to shbs on every new connection.
+	// pgx does NOT honour the search_path URL parameter, so we must do it here.
+	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, "SET search_path TO shbs")
+		return err
+	}
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create connection pool: %w", err)
+	}
+
+	// Test connection
+	if err := pool.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	return pool, nil
+}
+
 </pre></section>
 
   <section class="file-block"><div class="file-path">backend/internal/router/router.go</div><pre>package router
@@ -254,78 +328,6 @@ func SetupRouter(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 }
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/config/config.go</div><pre>package config
-
-import (
-	"os"
-)
-
-type Config struct {
-	DatabaseURL  string
-	JWTSecret    string
-	Environment  string
-	FrontendURL  string
-	Port         string
-}
-
-func Load() *Config {
-	return &amp;Config{
-		DatabaseURL: getEnv("DATABASE_URL", "postgresql://localhost:5432/seminar_hall_db?sslmode=disable"),
-		JWTSecret:    getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-		Environment:  getEnv("ENVIRONMENT", "development"),
-		FrontendURL:  getEnv("FRONTEND_URL", "http://localhost:3000"),
-		Port:         getEnv("PORT", "8080"),
-	}
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/database/database.go</div><pre>package database
-
-import (
-	"context"
-	"fmt"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
-
-// NewConnection creates a new PostgreSQL connection pool
-func NewConnection(databaseURL string) (*pgxpool.Pool, error) {
-	config, err := pgxpool.ParseConfig(databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse database URL: %w", err)
-	}
-
-	// Explicitly set search_path to shbs on every new connection.
-	// pgx does NOT honour the search_path URL parameter, so we must do it here.
-	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		_, err := conn.Exec(ctx, "SET search_path TO shbs")
-		return err
-	}
-
-	pool, err := pgxpool.NewWithConfig(context.Background(), config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create connection pool: %w", err)
-	}
-
-	// Test connection
-	if err := pool.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	return pool, nil
-}
-
-</pre></section>
-
   <section class="file-block"><div class="file-path">backend/internal/middleware/auth.go</div><pre>package middleware
 
 import (
@@ -407,31 +409,6 @@ func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/middleware/cors.go</div><pre>package middleware
-
-import (
-	"github.com/gin-gonic/gin"
-)
-
-// CORS middleware
-func CORS(frontendURL string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", frontendURL)
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
-}
-
-</pre></section>
-
   <section class="file-block"><div class="file-path">backend/internal/models/user.go</div><pre>package models
 
 import (
@@ -479,7 +456,7 @@ type Requester struct {
 
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/models/booking.go</div><pre>package models
+  <section class="file-block"><div class="file-path">backend/internal/models/booking.go (excerpt: L1–73)</div><pre>package models
 
 import (
 	"time"
@@ -552,56 +529,10 @@ type Booking struct {
 	CreatedAt   time.Time     `json:"created_at"`
 	CompletedAt *time.Time    `json:"completed_at"`
 }
-
-type AvailabilitySlot struct {
-	HallID   int       `json:"hall_id"`
-	HallName string    `json:"hall_name"`
-	Bookings []Booking `json:"bookings"`
-}
-
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/models/management.go</div><pre>package models
-
-import "time"
-
-type Department struct {
-	DeptID    int       `json:"dept_id"`
-	DeptName  string    `json:"dept_name"`
-	DeptCode  *string   `json:"dept_code"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type Class struct {
-	ClassID   int    `json:"class_id"`
-	ClassName string `json:"class_name"`
-	DeptID    int    `json:"dept_id"`
-	Year      string `json:"year"`
-}
-
-type Club struct {
-	ClubID      int     `json:"club_id"`
-	ClubName    string  `json:"club_name"`
-	DeptID      *int    `json:"dept_id"`
-	Description *string `json:"description"`
-}
-
-// HallUsageReport – for reporting
-type HallUsageReport struct {
-	HallID    int    `json:"hall_id"`
-	HallName  string `json:"hall_name"`
-	TotalBookings int `json:"total_bookings"`
-}
-
-// DepartmentUsageReport – for reporting
-type DepartmentUsageReport struct {
-	DeptID        int    `json:"dept_id"`
-	DeptName      string `json:"dept_name"`
-	TotalRequests int    `json:"total_requests"`
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/handlers/auth_handler.go</div><pre>package handlers
+  <section class="file-block"><div class="file-path">backend/internal/handlers/auth_handler.go (excerpt: L1–87)</div><pre>package handlers
 
 import (
 	"errors"
@@ -688,54 +619,76 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
-
-type changePasswordRequest struct {
-	CurrentPassword string `json:"current_password" binding:"required"`
-	NewPassword     string `json:"new_password" binding:"required"`
-}
-
-// ChangePassword lets any authenticated user update their own password.
-func (h *AuthHandler) ChangePassword(c *gin.Context) {
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	userID := userIDVal.(int)
-
-	var req changePasswordRequest
-	if err := c.ShouldBindJSON(&amp;req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := h.authService.ChangeOwnPassword(c.Request.Context(), userID, req.CurrentPassword, req.NewPassword)
-	if err != nil {
-		if errors.Is(err, services.ErrInvalidCurrentPassword) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "current password is incorrect"})
-			return
-		}
-		if strings.Contains(err.Error(), "password must be at least") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if strings.Contains(err.Error(), "user not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-			return
-		}
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "password updated"})
-}
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/handlers/request_handler.go</div><pre>package handlers
+  <section class="file-block"><div class="file-path">backend/internal/services/auth_service.go (excerpt: L1–63)</div><pre>package services
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"seminar-hall-booking-system/internal/models"
+	"seminar-hall-booking-system/internal/repositories"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// ErrInvalidCurrentPassword is returned when ChangeOwnPassword verification fails.
+var ErrInvalidCurrentPassword = errors.New("invalid current password")
+
+type AuthService struct {
+	userRepo  *repositories.UserRepository
+	jwtSecret string
+}
+
+func NewAuthService(userRepo *repositories.UserRepository, jwtSecret string) *AuthService {
+	return &amp;AuthService{
+		userRepo:  userRepo,
+		jwtSecret: jwtSecret,
+	}
+}
+
+func (s *AuthService) Login(ctx context.Context, username, password string) (string, *models.User, error) {
+	user, err := s.userRepo.GetByUsername(ctx, username)
+	if err != nil {
+		return "", nil, err
+	}
+	if user == nil {
+		return "", nil, errors.New("invalid credentials")
+	}
+
+	// Attempt bcrypt comparison
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		// Fallback for sample DB data which might be plain text or pseudo-hashed strings like "hashedpass_admin"
+		if user.PasswordHash != password {
+			return "", nil, errors.New("invalid credentials")
+		}
+	}
+
+	// Generate JWT claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id":  user.UserID,
+		"username": user.Username,
+		"role":     user.Role,
+		"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days expiration
+	})
+
+	// Sign token
+	tokenString, err := token.SignedString([]byte(s.jwtSecret))
+	if err != nil {
+		return "", nil, err
+	}
+
+	return tokenString, user, nil
+}
+// ...
+</pre></section>
+
+  <section class="file-block"><div class="file-path">backend/internal/handlers/request_handler.go (excerpt: L1–85)</div><pre>package handlers
 
 import (
 	"fmt"
@@ -820,306 +773,10 @@ func (h *RequestHandler) CreateRequest(c *gin.Context) {
 		"data":    req,
 	})
 }
-
-// GetMyRequests gets all requests made by the current authenticated requester
-func (h *RequestHandler) GetMyRequests(c *gin.Context) {
-	userIDStr, exists := c.Get("user_id")
-	if !exists {
-		fmt.Println("No user_id in context")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	userID := userIDStr.(int)
-
-	requests, err := h.requestService.GetMyRequests(c.Request.Context(), userID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Make sure we never return null for a slice in JSON
-	if requests == nil {
-		requests = []models.Request{}
-	}
-
-	c.JSON(http.StatusOK, requests)
-}
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/handlers/hall_handler.go</div><pre>package handlers
-
-import (
-	"net/http"
-	"seminar-hall-booking-system/internal/services"
-	"strconv"
-
-	"github.com/gin-gonic/gin"
-)
-
-type HallHandler struct {
-	hallService *services.HallService
-}
-
-func NewHallHandler(hallService *services.HallService) *HallHandler {
-	return &amp;HallHandler{hallService: hallService}
-}
-
-// GetAllHalls returns a list of all active halls
-func (h *HallHandler) GetAllHalls(c *gin.Context) {
-	halls, err := h.hallService.GetAllHalls(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch halls"})
-		return
-	}
-	
-	c.JSON(http.StatusOK, halls)
-}
-
-// GetHallByID returns details for a single hall
-func (h *HallHandler) GetHallByID(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid hall id"})
-		return
-	}
-
-	hall, err := h.hallService.GetHallByID(c.Request.Context(), id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch hall details"})
-		return
-	}
-
-	if hall == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "hall not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, hall)
-}
-
-// GetAvailability returns bookings for a hall (if hall_id provided) or all halls (if hall_id omitted) on a specific date
-func (h *HallHandler) GetAvailability(c *gin.Context) {
-	hallIDStr := c.Query("hall_id")
-	dateStr := c.Query("date") // Format: YYYY-MM-DD
-	startDateStr := c.Query("start_date")
-	endDateStr := c.Query("end_date")
-	
-	if dateStr == "" &amp;&amp; (startDateStr == "" || endDateStr == "") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "date or (start_date and end_date) query parameters are required"})
-		return
-	}
-	
-	// If hall_id is provided, return bookings for that hall ONLY (original behavior)
-	if hallIDStr != "" {
-		hallID, err := strconv.Atoi(hallIDStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid hall_id"})
-			return
-		}
-		
-		// If range is provided
-		if startDateStr != "" &amp;&amp; endDateStr != "" {
-			bookings, err := h.hallService.GetAvailabilityRange(c.Request.Context(), hallID, startDateStr, endDateStr)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to fetch range availability. Use YYYY-MM-DD."})
-				return
-			}
-			c.JSON(http.StatusOK, bookings)
-			return
-		}
-
-		// Fallback to single date
-		bookings, err := h.hallService.GetAvailability(c.Request.Context(), hallID, dateStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to fetch availability. Use YYYY-MM-DD."})
-			return
-		}
-		c.JSON(http.StatusOK, bookings)
-		return
-	}
-
-	// If hall_id is MISSING, return availability for ALL halls (new behavior)
-	slots, err := h.hallService.GetAvailabilityForAll(c.Request.Context(), dateStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to fetch availability. Use YYYY-MM-DD."})
-		return
-	}
-	
-	c.JSON(http.StatusOK, slots)
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/handlers/coordinator_handler.go</div><pre>package handlers
-
-import (
-	"net/http"
-	"seminar-hall-booking-system/internal/models"
-	"seminar-hall-booking-system/internal/services"
-	"strconv"
-
-	"github.com/gin-gonic/gin"
-)
-
-type CoordinatorHandler struct {
-	coordinatorService *services.CoordinatorService
-}
-
-func NewCoordinatorHandler(coordinatorService *services.CoordinatorService) *CoordinatorHandler {
-	return &amp;CoordinatorHandler{coordinatorService: coordinatorService}
-}
-
-// GetPendingRequests gets requests waiting for department approval
-func (h *CoordinatorHandler) GetPendingRequests(c *gin.Context) {
-	userIDStr, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	userID := userIDStr.(int)
-
-	requests, err := h.coordinatorService.GetDepartmentPendingRequests(c.Request.Context(), userID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if requests == nil {
-		requests = []models.Request{}
-	}
-
-	c.JSON(http.StatusOK, requests)
-}
-
-type ReviewRequestPayload struct {
-	Action  string  `json:"action" binding:"required"` // "approve" or "reject"
-	Remarks *string `json:"remarks"`
-}
-
-// ReviewRequest approves or rejects a department request
-func (h *CoordinatorHandler) ReviewRequest(c *gin.Context) {
-	userIDStr, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	userID := userIDStr.(int)
-
-	requestIDStr := c.Param("id")
-	requestID, err := strconv.Atoi(requestIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request id"})
-		return
-	}
-
-	var payload ReviewRequestPayload
-	if err := c.ShouldBindJSON(&amp;payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err = h.coordinatorService.ReviewRequest(c.Request.Context(), userID, requestID, payload.Action, payload.Remarks)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "request " + payload.Action + " successfully"})
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/services/auth_service.go</div><pre>package services
-
-import (
-	"context"
-	"errors"
-	"fmt"
-	"seminar-hall-booking-system/internal/models"
-	"seminar-hall-booking-system/internal/repositories"
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
-)
-
-// ErrInvalidCurrentPassword is returned when ChangeOwnPassword verification fails.
-var ErrInvalidCurrentPassword = errors.New("invalid current password")
-
-type AuthService struct {
-	userRepo  *repositories.UserRepository
-	jwtSecret string
-}
-
-func NewAuthService(userRepo *repositories.UserRepository, jwtSecret string) *AuthService {
-	return &amp;AuthService{
-		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
-	}
-}
-
-func (s *AuthService) Login(ctx context.Context, username, password string) (string, *models.User, error) {
-	user, err := s.userRepo.GetByUsername(ctx, username)
-	if err != nil {
-		return "", nil, err
-	}
-	if user == nil {
-		return "", nil, errors.New("invalid credentials")
-	}
-
-	// Attempt bcrypt comparison
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
-	if err != nil {
-		// Fallback for sample DB data which might be plain text or pseudo-hashed strings like "hashedpass_admin"
-		if user.PasswordHash != password {
-			return "", nil, errors.New("invalid credentials")
-		}
-	}
-
-	// Generate JWT claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":  user.UserID,
-		"username": user.Username,
-		"role":     user.Role,
-		"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days expiration
-	})
-
-	// Sign token
-	tokenString, err := token.SignedString([]byte(s.jwtSecret))
-	if err != nil {
-		return "", nil, err
-	}
-
-	return tokenString, user, nil
-}
-
-// ChangeOwnPassword verifies the current password and sets a new bcrypt hash for this user.
-func (s *AuthService) ChangeOwnPassword(ctx context.Context, userID int, currentPassword, newPassword string) error {
-	if len(newPassword) &lt; 6 {
-		return fmt.Errorf("password must be at least 6 characters")
-	}
-
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil || user == nil {
-		return fmt.Errorf("user not found")
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword))
-	if err != nil {
-		if user.PasswordHash != currentPassword {
-			return ErrInvalidCurrentPassword
-		}
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-
-	return s.userRepo.UpdatePasswordHash(ctx, userID, string(hash))
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/services/request_service.go</div><pre>package services
+  <section class="file-block"><div class="file-path">backend/internal/services/request_service.go (excerpt: L1–86)</div><pre>package services
 
 import (
 	"context"
@@ -1205,80 +862,141 @@ func (s *RequestService) CreateRequest(ctx context.Context, userID int, req *mod
 	
 	return s.requestRepo.Create(ctx, req)
 }
-
-func (s *RequestService) GetMyRequests(ctx context.Context, userID int) ([]models.Request, error) {
-	requester, err := s.userRepo.GetRequesterByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if requester == nil {
-		return nil, errors.New("user is not a requester")
-	}
-
-	return s.requestRepo.GetByRequester(ctx, requester.RequesterID)
-}
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/services/hall_service.go</div><pre>package services
+  <section class="file-block"><div class="file-path">backend/internal/repositories/request_repository.go (excerpt: L1–40, L145–153)</div><pre>package repositories
 
 import (
 	"context"
 	"seminar-hall-booking-system/internal/models"
-	"seminar-hall-booking-system/internal/repositories"
-	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type HallService struct {
-	hallRepo *repositories.HallRepository
+type RequestRepository struct {
+	db *pgxpool.Pool
 }
 
-func NewHallService(hallRepo *repositories.HallRepository) *HallService {
-	return &amp;HallService{hallRepo: hallRepo}
+func NewRequestRepository(db *pgxpool.Pool) *RequestRepository {
+	return &amp;RequestRepository{db: db}
 }
 
-func (s *HallService) GetAllHalls(ctx context.Context) ([]models.Hall, error) {
-	return s.hallRepo.GetAll(ctx)
+// Create new request
+func (r *RequestRepository) Create(ctx context.Context, req *models.Request) error {
+	query := `
+		INSERT INTO requests (requester_id, hall_id, event_title, event_description, event_date, start_time, end_time, expected_attendees, purpose)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING request_id, dept_status, admin_status, requested_at
+	`
+
+	err := r.db.QueryRow(ctx, query,
+		req.RequesterID,
+		req.HallID,
+		req.EventTitle,
+		req.EventDescription,
+		req.EventDate,
+		req.StartTime,
+		req.EndTime,
+		req.ExpectedAttendees,
+		req.Purpose,
+	).Scan(&amp;req.RequestID, &amp;req.DeptStatus, &amp;req.AdminStatus, &amp;req.RequestedAt)
+
+	return err
+}
+// ...
+func (r *RequestRepository) UpdateDeptStatus(ctx context.Context, reqID int, status models.ApprovalStatus, byUserID int, remarks *string) error {
+	query := `
+		UPDATE requests 
+		SET dept_status = $1, dept_approved_by = $2, dept_approved_at = NOW(), dept_remarks = $3
+		WHERE request_id = $4
+	`
+	_, err := r.db.Exec(ctx, query, status, byUserID, remarks, reqID)
+	return err
+}
+// ...
+</pre></section>
+
+  <section class="file-block"><div class="file-path">backend/internal/handlers/coordinator_handler.go</div><pre>package handlers
+
+import (
+	"net/http"
+	"seminar-hall-booking-system/internal/models"
+	"seminar-hall-booking-system/internal/services"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
+
+type CoordinatorHandler struct {
+	coordinatorService *services.CoordinatorService
 }
 
-func (s *HallService) GetHallByID(ctx context.Context, id int) (*models.Hall, error) {
-	return s.hallRepo.GetByID(ctx, id)
+func NewCoordinatorHandler(coordinatorService *services.CoordinatorService) *CoordinatorHandler {
+	return &amp;CoordinatorHandler{coordinatorService: coordinatorService}
 }
 
-func (s *HallService) GetAvailability(ctx context.Context, hallID int, dateStr string) ([]models.Booking, error) {
-	// Parse date string (YYYY-MM-DD)
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return nil, err
+// GetPendingRequests gets requests waiting for department approval
+func (h *CoordinatorHandler) GetPendingRequests(c *gin.Context) {
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
 	}
-	
-	return s.hallRepo.GetAvailability(ctx, hallID, date)
+	userID := userIDStr.(int)
+
+	requests, err := h.coordinatorService.GetDepartmentPendingRequests(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if requests == nil {
+		requests = []models.Request{}
+	}
+
+	c.JSON(http.StatusOK, requests)
 }
 
-func (s *HallService) GetAvailabilityForAll(ctx context.Context, dateStr string) ([]models.AvailabilitySlot, error) {
-	// Parse date string (YYYY-MM-DD)
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return nil, err
-	}
-	
-	return s.hallRepo.GetAvailabilityForAll(ctx, date)
+type ReviewRequestPayload struct {
+	Action  string  `json:"action" binding:"required"` // "approve" or "reject"
+	Remarks *string `json:"remarks"`
 }
 
-func (s *HallService) GetAvailabilityRange(ctx context.Context, hallID int, startDateStr string, endDateStr string) ([]models.Booking, error) {
-	startDate, err := time.Parse("2006-01-02", startDateStr)
-	if err != nil {
-		return nil, err
+// ReviewRequest approves or rejects a department request
+func (h *CoordinatorHandler) ReviewRequest(c *gin.Context) {
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
 	}
-	endDate, err := time.Parse("2006-01-02", endDateStr)
+	userID := userIDStr.(int)
+
+	requestIDStr := c.Param("id")
+	requestID, err := strconv.Atoi(requestIDStr)
 	if err != nil {
-		return nil, err
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request id"})
+		return
 	}
-	
-	return s.hallRepo.GetAvailabilityRange(ctx, hallID, startDate, endDate)
+
+	var payload ReviewRequestPayload
+	if err := c.ShouldBindJSON(&amp;payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.coordinatorService.ReviewRequest(c.Request.Context(), userID, requestID, payload.Action, payload.Remarks)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "request " + payload.Action + " successfully"})
 }
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/services/coordinator_service.go</div><pre>package services
+  <section class="file-block"><div class="file-path">backend/internal/services/coordinator_service.go (excerpt: L1–22, L40–79)</div><pre>package services
 
 import (
 	"context"
@@ -1300,23 +1018,7 @@ func NewCoordinatorService(reqRepo *repositories.RequestRepository, userRepo *re
 		bookingRepo: bookingRepo,
 	}
 }
-
-// GetDepartmentPendingRequests gets all pending requests for the coordinator's department
-func (s *CoordinatorService) GetDepartmentPendingRequests(ctx context.Context, coordinatorID int) ([]models.Request, error) {
-	coordinator, err := s.userRepo.GetByID(ctx, coordinatorID)
-	if err != nil {
-		return nil, err
-	}
-	if coordinator == nil || coordinator.DeptID == nil {
-		return nil, errors.New("coordinator department not found")
-	}
-
-	// For a complete implementation, RequestRepository needs a GetByDepartmentAndStatus method.
-	// We'll implement a workaround here by fetching all requests and filtering in memory or ideally updating the repo.
-	// Assuming an update to RequestRepository:
-	return s.requestRepo.GetByDepartmentAndStatus(ctx, *coordinator.DeptID, models.StatusPending)
-}
-
+// ...
 // ReviewRequest allows the coordinator to approve (forward) or reject a request
 func (s *CoordinatorService) ReviewRequest(ctx context.Context, coordinatorID int, requestID int, action string, remarks *string) error {
 	// 1. Verify coordinator
@@ -1359,416 +1061,7 @@ func (s *CoordinatorService) ReviewRequest(ctx context.Context, coordinatorID in
 }
 </pre></section>
 
-  <section class="file-block"><div class="file-path">backend/internal/repositories/user_repository.go</div><pre>package repositories
-
-import (
-	"context"
-	"seminar-hall-booking-system/internal/models"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
-
-type UserRepository struct {
-	db *pgxpool.Pool
-}
-
-func NewUserRepository(db *pgxpool.Pool) *UserRepository {
-	return &amp;UserRepository{db: db}
-}
-
-func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
-	query := `
-		SELECT user_id, username, password_hash, full_name, email, phone, role, dept_id, is_active, created_at, updated_at
-		FROM users
-		WHERE username = $1 AND is_active = true
-	`
-
-	var user models.User
-	err := r.db.QueryRow(ctx, query, username).Scan(
-		&amp;user.UserID,
-		&amp;user.Username,
-		&amp;user.PasswordHash,
-		&amp;user.FullName,
-		&amp;user.Email,
-		&amp;user.Phone,
-		&amp;user.Role,
-		&amp;user.DeptID,
-		&amp;user.IsActive,
-		&amp;user.CreatedAt,
-		&amp;user.UpdatedAt,
-	)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil // Not found
-		}
-		return nil, err
-	}
-
-	return &amp;user, nil
-}
-
-func (r *UserRepository) GetByID(ctx context.Context, id int) (*models.User, error) {
-	query := `
-		SELECT user_id, username, password_hash, full_name, email, phone, role, dept_id, is_active, created_at, updated_at
-		FROM users
-		WHERE user_id = $1 AND is_active = true
-	`
-
-	var user models.User
-	err := r.db.QueryRow(ctx, query, id).Scan(
-		&amp;user.UserID,
-		&amp;user.Username,
-		&amp;user.PasswordHash,
-		&amp;user.FullName,
-		&amp;user.Email,
-		&amp;user.Phone,
-		&amp;user.Role,
-		&amp;user.DeptID,
-		&amp;user.IsActive,
-		&amp;user.CreatedAt,
-		&amp;user.UpdatedAt,
-	)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &amp;user, nil
-}
-
-func (r *UserRepository) GetRequesterByUserID(ctx context.Context, userID int) (*models.Requester, error) {
-	query := `
-		SELECT requester_id, user_id, requester_type, class_id, club_id, created_at
-		FROM requesters
-		WHERE user_id = $1
-	`
-
-	var req models.Requester
-	err := r.db.QueryRow(ctx, query, userID).Scan(
-		&amp;req.RequesterID,
-		&amp;req.UserID,
-		&amp;req.RequesterType,
-		&amp;req.ClassID,
-		&amp;req.ClubID,
-		&amp;req.CreatedAt,
-	)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &amp;req, nil
-}
-
-// UpdatePasswordHash updates the bcrypt hash for an active user.
-func (r *UserRepository) UpdatePasswordHash(ctx context.Context, userID int, passwordHash string) error {
-	tag, err := r.db.Exec(ctx,
-		`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2 AND is_active = true`,
-		passwordHash, userID,
-	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return pgx.ErrNoRows
-	}
-	return nil
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/repositories/request_repository.go</div><pre>package repositories
-
-import (
-	"context"
-	"seminar-hall-booking-system/internal/models"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
-
-type RequestRepository struct {
-	db *pgxpool.Pool
-}
-
-func NewRequestRepository(db *pgxpool.Pool) *RequestRepository {
-	return &amp;RequestRepository{db: db}
-}
-
-// Create new request
-func (r *RequestRepository) Create(ctx context.Context, req *models.Request) error {
-	query := `
-		INSERT INTO requests (requester_id, hall_id, event_title, event_description, event_date, start_time, end_time, expected_attendees, purpose)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING request_id, dept_status, admin_status, requested_at
-	`
-
-	err := r.db.QueryRow(ctx, query,
-		req.RequesterID,
-		req.HallID,
-		req.EventTitle,
-		req.EventDescription,
-		req.EventDate,
-		req.StartTime,
-		req.EndTime,
-		req.ExpectedAttendees,
-		req.Purpose,
-	).Scan(&amp;req.RequestID, &amp;req.DeptStatus, &amp;req.AdminStatus, &amp;req.RequestedAt)
-
-	return err
-}
-
-// GetByID gets a specific request
-func (r *RequestRepository) GetByID(ctx context.Context, id int) (*models.Request, error) {
-	query := `
-		SELECT request_id, requester_id, hall_id, event_title, event_description, event_date, start_time, end_time, 
-		expected_attendees, purpose, dept_status, dept_approved_by, dept_approved_at, dept_remarks, 
-		admin_status, admin_approved_by, admin_approved_at, admin_remarks, requested_at, is_cancelled
-		FROM requests
-		WHERE request_id = $1
-	`
-
-	var req models.Request
-	err := r.db.QueryRow(ctx, query, id).Scan(
-		&amp;req.RequestID,
-		&amp;req.RequesterID,
-		&amp;req.HallID,
-		&amp;req.EventTitle,
-		&amp;req.EventDescription,
-		&amp;req.EventDate,
-		&amp;req.StartTime,
-		&amp;req.EndTime,
-		&amp;req.ExpectedAttendees,
-		&amp;req.Purpose,
-		&amp;req.DeptStatus,
-		&amp;req.DeptApprovedBy,
-		&amp;req.DeptApprovedAt,
-		&amp;req.DeptRemarks,
-		&amp;req.AdminStatus,
-		&amp;req.AdminApprovedBy,
-		&amp;req.AdminApprovedAt,
-		&amp;req.AdminRemarks,
-		&amp;req.RequestedAt,
-		&amp;req.IsCancelled,
-	)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil // Not found
-		}
-		return nil, err
-	}
-
-	return &amp;req, nil
-}
-
-// GetByRequester gets all requests for a specific requester
-func (r *RequestRepository) GetByRequester(ctx context.Context, requesterID int) ([]models.Request, error) {
-	query := `
-		SELECT
-			r.request_id, r.requester_id, r.hall_id,
-			h.hall_name, h.location, h.capacity,
-			r.event_title, r.event_description, r.event_date, r.start_time, r.end_time,
-			r.expected_attendees, r.purpose, r.dept_status, r.dept_approved_by, r.dept_approved_at, r.dept_remarks,
-			r.admin_status, r.admin_approved_by, r.admin_approved_at, r.admin_remarks, r.requested_at, r.is_cancelled
-		FROM requests r
-		JOIN halls h ON h.hall_id = r.hall_id
-		WHERE r.requester_id = $1
-		ORDER BY r.requested_at DESC
-	`
-
-	rows, err := r.db.Query(ctx, query, requesterID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var requests []models.Request
-	for rows.Next() {
-		var req models.Request
-		err := rows.Scan(
-			&amp;req.RequestID,
-			&amp;req.RequesterID,
-			&amp;req.HallID,
-			&amp;req.HallName,
-			&amp;req.HallLocation,
-			&amp;req.HallCapacity,
-			&amp;req.EventTitle,
-			&amp;req.EventDescription,
-			&amp;req.EventDate,
-			&amp;req.StartTime,
-			&amp;req.EndTime,
-			&amp;req.ExpectedAttendees,
-			&amp;req.Purpose,
-			&amp;req.DeptStatus,
-			&amp;req.DeptApprovedBy,
-			&amp;req.DeptApprovedAt,
-			&amp;req.DeptRemarks,
-			&amp;req.AdminStatus,
-			&amp;req.AdminApprovedBy,
-			&amp;req.AdminApprovedAt,
-			&amp;req.AdminRemarks,
-			&amp;req.RequestedAt,
-			&amp;req.IsCancelled,
-		)
-		if err != nil {
-			return nil, err
-		}
-		requests = append(requests, req)
-	}
-
-	return requests, nil
-}
-
-// UpdateDeptStatus updates the dept status
-func (r *RequestRepository) UpdateDeptStatus(ctx context.Context, reqID int, status models.ApprovalStatus, byUserID int, remarks *string) error {
-	query := `
-		UPDATE requests 
-		SET dept_status = $1, dept_approved_by = $2, dept_approved_at = NOW(), dept_remarks = $3
-		WHERE request_id = $4
-	`
-	_, err := r.db.Exec(ctx, query, status, byUserID, remarks, reqID)
-	return err
-}
-
-// UpdateAdminStatus updates the admin status
-func (r *RequestRepository) UpdateAdminStatus(ctx context.Context, reqID int, status models.ApprovalStatus, byUserID int, remarks *string) error {
-	query := `
-		UPDATE requests 
-		SET admin_status = $1, admin_approved_by = $2, admin_approved_at = NOW(), admin_remarks = $3
-		WHERE request_id = $4
-	`
-	_, err := r.db.Exec(ctx, query, status, byUserID, remarks, reqID)
-	return err
-}
-
-// GetByDepartmentAndStatus gets pending requests for a specific department
-func (r *RequestRepository) GetByDepartmentAndStatus(ctx context.Context, deptID int, status models.ApprovalStatus) ([]models.Request, error) {
-	// A bit tricky because we have to join with requesters -&gt; users to find the dept_id
-	query := `
-		SELECT
-			r.request_id, r.requester_id, r.hall_id,
-			h.hall_name, h.location, h.capacity,
-			r.event_title, r.event_description, r.event_date, r.start_time, r.end_time,
-			r.expected_attendees, r.purpose, r.dept_status, r.dept_approved_by, r.dept_approved_at, r.dept_remarks,
-			r.admin_status, r.admin_approved_by, r.admin_approved_at, r.admin_remarks, r.requested_at, r.is_cancelled
-		FROM requests r
-		JOIN halls h ON h.hall_id = r.hall_id
-		JOIN requesters req ON r.requester_id = req.requester_id
-		JOIN users u ON req.user_id = u.user_id
-		WHERE u.dept_id = $1 AND r.dept_status = $2
-		ORDER BY r.requested_at ASC
-	`
-
-	rows, err := r.db.Query(ctx, query, deptID, status)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var requests []models.Request
-	for rows.Next() {
-		var req models.Request
-		err := rows.Scan(
-			&amp;req.RequestID,
-			&amp;req.RequesterID,
-			&amp;req.HallID,
-			&amp;req.HallName,
-			&amp;req.HallLocation,
-			&amp;req.HallCapacity,
-			&amp;req.EventTitle,
-			&amp;req.EventDescription,
-			&amp;req.EventDate,
-			&amp;req.StartTime,
-			&amp;req.EndTime,
-			&amp;req.ExpectedAttendees,
-			&amp;req.Purpose,
-			&amp;req.DeptStatus,
-			&amp;req.DeptApprovedBy,
-			&amp;req.DeptApprovedAt,
-			&amp;req.DeptRemarks,
-			&amp;req.AdminStatus,
-			&amp;req.AdminApprovedBy,
-			&amp;req.AdminApprovedAt,
-			&amp;req.AdminRemarks,
-			&amp;req.RequestedAt,
-			&amp;req.IsCancelled,
-		)
-		if err != nil {
-			return nil, err
-		}
-		requests = append(requests, req)
-	}
-	return requests, nil
-}
-
-// GetByAdminStatus gets requests that have a certain admin status (and dept status)
-func (r *RequestRepository) GetByAdminStatus(ctx context.Context, adminStatus models.ApprovalStatus, deptStatus models.ApprovalStatus) ([]models.Request, error) {
-	query := `
-		SELECT
-			r.request_id, r.requester_id, r.hall_id,
-			h.hall_name, h.location, h.capacity,
-			r.event_title, r.event_description, r.event_date, r.start_time, r.end_time,
-			r.expected_attendees, r.purpose, r.dept_status, r.dept_approved_by, r.dept_approved_at, r.dept_remarks,
-			r.admin_status, r.admin_approved_by, r.admin_approved_at, r.admin_remarks, r.requested_at, r.is_cancelled
-		FROM requests r
-		JOIN halls h ON h.hall_id = r.hall_id
-		WHERE r.admin_status = $1 AND r.dept_status = $2
-		ORDER BY r.requested_at ASC
-	`
-
-	rows, err := r.db.Query(ctx, query, adminStatus, deptStatus)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var requests []models.Request
-	for rows.Next() {
-		var req models.Request
-		err := rows.Scan(
-			&amp;req.RequestID,
-			&amp;req.RequesterID,
-			&amp;req.HallID,
-			&amp;req.HallName,
-			&amp;req.HallLocation,
-			&amp;req.HallCapacity,
-			&amp;req.EventTitle,
-			&amp;req.EventDescription,
-			&amp;req.EventDate,
-			&amp;req.StartTime,
-			&amp;req.EndTime,
-			&amp;req.ExpectedAttendees,
-			&amp;req.Purpose,
-			&amp;req.DeptStatus,
-			&amp;req.DeptApprovedBy,
-			&amp;req.DeptApprovedAt,
-			&amp;req.DeptRemarks,
-			&amp;req.AdminStatus,
-			&amp;req.AdminApprovedBy,
-			&amp;req.AdminApprovedAt,
-			&amp;req.AdminRemarks,
-			&amp;req.RequestedAt,
-			&amp;req.IsCancelled,
-		)
-		if err != nil {
-			return nil, err
-		}
-		requests = append(requests, req)
-	}
-	return requests, nil
-}
-
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/repositories/booking_repository.go</div><pre>package repositories
+  <section class="file-block"><div class="file-path">backend/internal/repositories/booking_repository.go (excerpt: L1–18, L126–138, L140–145)</div><pre>package repositories
 
 import (
 	"context"
@@ -1786,113 +1079,7 @@ func NewBookingRepository(db *pgxpool.Pool) *BookingRepository {
 	return &amp;BookingRepository{db: db}
 }
 
-// Create inserts a new booking (trigger actively checks for overlap)
-func (r *BookingRepository) Create(ctx context.Context, b *models.Booking) error {
-	query := `
-		INSERT INTO bookings (request_id, hall_id, requester_id, event_title, event_date, start_time, end_time)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING booking_id, status, created_at
-	`
-	
-	err := r.db.QueryRow(ctx, query,
-		b.RequestID,
-		b.HallID,
-		b.RequesterID,
-		b.EventTitle,
-		b.EventDate,
-		b.StartTime,
-		b.EndTime,
-	).Scan(&amp;b.BookingID, &amp;b.Status, &amp;b.CreatedAt)
-
-	return err
-}
-
-// GetAll returns all bookings
-func (r *BookingRepository) GetAll(ctx context.Context) ([]models.Booking, error) {
-	query := `
-		SELECT booking_id, request_id, hall_id, requester_id, event_title, event_date, start_time, end_time, status, created_at, completed_at
-		FROM bookings
-		ORDER BY event_date ASC, start_time ASC
-	`
-
-	rows, err := r.db.Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var bookings []models.Booking
-	for rows.Next() {
-		var b models.Booking
-		err := rows.Scan(
-			&amp;b.BookingID,
-			&amp;b.RequestID,
-			&amp;b.HallID,
-			&amp;b.RequesterID,
-			&amp;b.EventTitle,
-			&amp;b.EventDate,
-			&amp;b.StartTime,
-			&amp;b.EndTime,
-			&amp;b.Status,
-			&amp;b.CreatedAt,
-			&amp;b.CompletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		bookings = append(bookings, b)
-	}
-
-	return bookings, nil
-}
-
-// GetByRequester returns all bookings for a specific requester
-func (r *BookingRepository) GetByRequester(ctx context.Context, requesterID int) ([]models.Booking, error) {
-	query := `
-		SELECT booking_id, request_id, hall_id, requester_id, event_title, event_date, start_time, end_time, status, created_at, completed_at
-		FROM bookings
-		WHERE requester_id = $1
-		ORDER BY event_date DESC
-	`
-
-	rows, err := r.db.Query(ctx, query, requesterID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var bookings []models.Booking
-	for rows.Next() {
-		var b models.Booking
-		err := rows.Scan(
-			&amp;b.BookingID,
-			&amp;b.RequestID,
-			&amp;b.HallID,
-			&amp;b.RequesterID,
-			&amp;b.EventTitle,
-			&amp;b.EventDate,
-			&amp;b.StartTime,
-			&amp;b.EndTime,
-			&amp;b.Status,
-			&amp;b.CreatedAt,
-			&amp;b.CompletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		bookings = append(bookings, b)
-	}
-
-	return bookings, nil
-}
-
-// UpdateStatus allows changing a booking's status
-func (r *BookingRepository) UpdateStatus(ctx context.Context, bookingID int, status models.BookingStatus) error {
-	query := `UPDATE bookings SET status = $1 WHERE booking_id = $2`
-	_, err := r.db.Exec(ctx, query, status, bookingID)
-	return err
-}
-
+// ...
 // CheckOverlap returns true if there's an existing active booking for the same hall and time
 func (r *BookingRepository) CheckOverlap(ctx context.Context, hallID int, date time.Time, startTime string, endTime string) (bool, error) {
 	query := `
@@ -1906,216 +1093,12 @@ func (r *BookingRepository) CheckOverlap(ctx context.Context, hallID int, date t
 		  )
 	`
 	var count int
-	// We use QueryRow to get the count of overlapping bookings
+// ...
 	err := r.db.QueryRow(ctx, query, hallID, date, startTime, endTime).Scan(&amp;count)
 	if err != nil {
 		return false, err
 	}
 	return count &gt; 0, nil
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">backend/internal/repositories/hall_repository.go</div><pre>package repositories
-
-import (
-	"context"
-	"seminar-hall-booking-system/internal/models"
-	"time"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
-
-type HallRepository struct {
-	db *pgxpool.Pool
-}
-
-func NewHallRepository(db *pgxpool.Pool) *HallRepository {
-	return &amp;HallRepository{db: db}
-}
-
-func (r *HallRepository) GetAll(ctx context.Context) ([]models.Hall, error) {
-	query := `
-		SELECT hall_id, hall_name, capacity, location, facilities, is_active
-		FROM halls
-		WHERE is_active = true
-	`
-
-	rows, err := r.db.Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	halls := []models.Hall{}
-	for rows.Next() {
-		var hall models.Hall
-		err := rows.Scan(
-			&amp;hall.HallID,
-			&amp;hall.HallName,
-			&amp;hall.Capacity,
-			&amp;hall.Location,
-			&amp;hall.Facilities,
-			&amp;hall.IsActive,
-		)
-		if err != nil {
-			return nil, err
-		}
-		halls = append(halls, hall)
-	}
-
-	return halls, nil
-}
-
-func (r *HallRepository) GetByID(ctx context.Context, id int) (*models.Hall, error) {
-	query := `
-		SELECT hall_id, hall_name, capacity, location, facilities, is_active
-		FROM halls
-		WHERE hall_id = $1 AND is_active = true
-	`
-
-	var hall models.Hall
-	err := r.db.QueryRow(ctx, query, id).Scan(
-		&amp;hall.HallID,
-		&amp;hall.HallName,
-		&amp;hall.Capacity,
-		&amp;hall.Location,
-		&amp;hall.Facilities,
-		&amp;hall.IsActive,
-	)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &amp;hall, nil
-}
-
-// GetAvailability gets all confirmed bookings for a specific hall on a specific date
-func (r *HallRepository) GetAvailability(ctx context.Context, hallID int, date time.Time) ([]models.Booking, error) {
-	query := `
-		SELECT booking_id, request_id, hall_id, requester_id, event_title, event_date, start_time, end_time, status, created_at, completed_at
-		FROM bookings
-		WHERE hall_id = $1 AND event_date = $2 AND status != 'cancelled'
-		ORDER BY start_time ASC
-	`
-
-	rows, err := r.db.Query(ctx, query, hallID, date.Format("2006-01-02"))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	bookings := []models.Booking{}
-	for rows.Next() {
-		var b models.Booking
-		err := rows.Scan(
-			&amp;b.BookingID,
-			&amp;b.RequestID,
-			&amp;b.HallID,
-			&amp;b.RequesterID,
-			&amp;b.EventTitle,
-			&amp;b.EventDate,
-			&amp;b.StartTime,
-			&amp;b.EndTime,
-			&amp;b.Status,
-			&amp;b.CreatedAt,
-			&amp;b.CompletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		bookings = append(bookings, b)
-	}
-
-	return bookings, nil
-}
-
-// GetAvailabilityRange gets all confirmed bookings for a specific hall between two dates
-func (r *HallRepository) GetAvailabilityRange(ctx context.Context, hallID int, startDate time.Time, endDate time.Time) ([]models.Booking, error) {
-	query := `
-		SELECT booking_id, request_id, hall_id, requester_id, event_title, event_date, start_time, end_time, status, created_at, completed_at
-		FROM bookings
-		WHERE hall_id = $1 AND event_date BETWEEN $2 AND $3 AND status != 'cancelled'
-		ORDER BY event_date ASC, start_time ASC
-	`
-
-	rows, err := r.db.Query(ctx, query, hallID, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	bookings := []models.Booking{}
-	for rows.Next() {
-		var b models.Booking
-		err := rows.Scan(
-			&amp;b.BookingID, &amp;b.RequestID, &amp;b.HallID, &amp;b.RequesterID,
-			&amp;b.EventTitle, &amp;b.EventDate, &amp;b.StartTime, &amp;b.EndTime,
-			&amp;b.Status, &amp;b.CreatedAt, &amp;b.CompletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		bookings = append(bookings, b)
-	}
-
-	return bookings, nil
-}
-// GetAvailabilityForAll gets confirmed bookings for ALL active halls on a specific date
-func (r *HallRepository) GetAvailabilityForAll(ctx context.Context, date time.Time) ([]models.AvailabilitySlot, error) {
-	// 1. Get all active halls
-	halls, err := r.GetAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// 2. Get all bookings for that date
-	query := `
-		SELECT booking_id, request_id, hall_id, requester_id, event_title, event_date, start_time, end_time, status, created_at, completed_at
-		FROM bookings
-		WHERE event_date = $1 AND status != 'cancelled'
-		ORDER BY start_time ASC
-	`
-	rows, err := r.db.Query(ctx, query, date.Format("2006-01-02"))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	// 3. Group bookings by hall_id
-	bookingsByHall := make(map[int][]models.Booking)
-	for rows.Next() {
-		var b models.Booking
-		err := rows.Scan(
-			&amp;b.BookingID, &amp;b.RequestID, &amp;b.HallID, &amp;b.RequesterID,
-			&amp;b.EventTitle, &amp;b.EventDate, &amp;b.StartTime, &amp;b.EndTime,
-			&amp;b.Status, &amp;b.CreatedAt, &amp;b.CompletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		bookingsByHall[b.HallID] = append(bookingsByHall[b.HallID], b)
-	}
-
-	// 4. Map halls to availability slots
-	var slots []models.AvailabilitySlot
-	for _, h := range halls {
-		bookings := bookingsByHall[h.HallID]
-		if bookings == nil {
-			bookings = []models.Booking{}
-		}
-		slots = append(slots, models.AvailabilitySlot{
-			HallID:   h.HallID,
-			HallName: h.HallName,
-			Bookings: bookings,
-		})
-	}
-
-	return slots, nil
 }
 </pre></section>
 

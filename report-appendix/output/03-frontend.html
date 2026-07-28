@@ -5,39 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Project Coding — Frontend source (Next.js / TypeScript)</title>
   <style>
-@page { size: A4; margin: 11mm 9mm 14mm 32mm; }
+@page { size: A4; margin: 9mm 8mm 12mm 30mm; }
 * { box-sizing: border-box; }
 body {
   font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
-  font-size: 8pt;
-  line-height: 1.24;
+  font-size: 7.5pt;
+  line-height: 1.14;
   color: #111;
   max-width: 100%;
 }
-h1 { font-size: 11pt; margin: 0 0 0.35em; }
+h1 { font-size: 10.5pt; margin: 0 0 0.3em; }
 .github-notice {
-  font-size: 8pt;
+  font-size: 7.5pt;
   background: #f5f5f5;
   border: 1px solid #ddd;
-  padding: 0.5em 0.75em;
-  margin-bottom: 0.9em;
+  padding: 0.4em 0.65em;
+  margin-bottom: 0.7em;
   page-break-inside: avoid;
 }
 .github-notice strong { font-weight: 600; }
-.meta { font-size: 8pt; color: #444; margin-bottom: 0.85em; }
-.file-block { margin-bottom: 0.85em; }
+.meta { font-size: 7.5pt; color: #444; margin-bottom: 0.55em; }
+.file-block { margin-bottom: 0.45em; }
 .file-path {
   font-weight: bold;
-  font-size: 8pt;
-  margin: 0.65em 0 0.25em;
-  padding-bottom: 0.15em;
+  font-size: 7.5pt;
+  margin: 0.4em 0 0.15em;
+  padding-bottom: 0.1em;
   border-bottom: 1px solid #ccc;
   page-break-after: avoid;
 }
 .part-heading {
-  font-size: 11pt;
-  margin: 1.1em 0 0.35em;
-  padding-bottom: 0.2em;
+  font-size: 10.5pt;
+  margin: 0.75em 0 0.25em;
+  padding-bottom: 0.12em;
   border-bottom: 2px solid #888;
   page-break-before: always;
   page-break-after: avoid;
@@ -47,1100 +47,27 @@ h1 { font-size: 11pt; margin: 0 0 0.35em; }
   margin-top: 0;
 }
 .part-meta {
-  font-size: 8pt;
+  font-size: 7.5pt;
   color: #444;
-  margin: 0 0 0.9em;
+  margin: 0 0 0.55em;
 }
 pre {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;
+  orphans: 3;
+  widows: 3;
 }
 </style>
 </head>
 <body>
   <h1>Project Coding — Frontend source (Next.js / TypeScript)</h1>
-  <p class="meta">Seminar Hall Booking System — representative Next.js/TS sources (full repo on GitHub)</p>
+  <p class="meta">Seminar Hall Booking System — key Next.js/TS segments (full repo on GitHub)</p>
   <div class="github-notice">
-    <strong>Full source code</strong> — Included representative code segments only (routing, auth, halls, requests, coordinator workflow). Admin/management handlers and other pages follow the same patterns.
+    <strong>Full source code</strong> — Included the most important code segments only (core schema, routing, JWT auth, request creation, department approval, overlap checks, and key UI logic). Omitted lines are marked with // ... or -- .... Full sources are on GitHub.
     Repository: <a href="https://github.com/sreejithr247/seminar-hall-booking-system">https://github.com/sreejithr247/seminar-hall-booking-system</a>.
   </div>
-  <section class="file-block"><div class="file-path">frontend/app/layout.tsx</div><pre>import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "sonner";
-import { AuthProvider } from "@/lib/auth-context";
-
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "Seminar Hall Booking System",
-  description: "IGNOU BCA BCSP-064 - Seminar Hall Booking System",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly&lt;{
-  children: React.ReactNode;
-}&gt;) {
-  return (
-    &lt;html lang="en"&gt;
-      &lt;body className={inter.className}&gt;
-        &lt;AuthProvider&gt;
-          {children}
-          &lt;Toaster position="bottom-right" /&gt;
-        &lt;/AuthProvider&gt;
-      &lt;/body&gt;
-    &lt;/html&gt;
-  );
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/globals.css</div><pre>@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #1e293b;
-  --primary: #2563eb;
-  --primary-dark: #1e40af;
-  --secondary: #64748b;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-primary-dark: var(--primary-dark);
-  --color-secondary: var(--secondary);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* College-style blue/white theme */
-.bg-primary {
-  background-color: var(--primary);
-}
-
-.bg-primary-dark {
-  background-color: var(--primary-dark);
-}
-
-.text-primary {
-  color: var(--primary);
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/login/page.tsx</div><pre>'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { authApi } from '@/lib/services';
-import { useAuth } from '@/lib/auth-context';
-import { toast } from 'sonner';
-
-export default function LoginPage() {
-  const router = useRouter();
-  const { user, loading, refresh } = useAuth();
-  const [formData, setFormData] = useState({ username: '', password: '' });
-  const [submitting, setSubmitting] = useState(false);
-
-  // If already logged in, redirect to dashboard
-  useEffect(() =&gt; {
-    if (!loading &amp;&amp; user) {
-      router.push('/dashboard');
-    }
-  }, [user, loading, router]);
-
-  const handleSubmit = async (e: React.FormEvent) =&gt; {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await authApi.login(formData.username, formData.password);
-      // Refresh AuthContext so user state is populated BEFORE navigating
-      await refresh();
-      toast.success('Login successful!');
-      router.push('/dashboard');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Login failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    &lt;div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white"&gt;
-      &lt;div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md"&gt;
-        &lt;h1 className="text-3xl font-bold text-blue-900 mb-6 text-center"&gt;
-          Login
-        &lt;/h1&gt;
-        &lt;form onSubmit={handleSubmit} className="space-y-4"&gt;
-          &lt;div&gt;
-            &lt;label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1"&gt;
-              Username
-            &lt;/label&gt;
-            &lt;input
-              type="text"
-              id="username"
-              required
-              value={formData.username}
-              onChange={(e) =&gt; setFormData({ ...formData, username: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            /&gt;
-          &lt;/div&gt;
-          &lt;div&gt;
-            &lt;label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1"&gt;
-              Password
-            &lt;/label&gt;
-            &lt;input
-              type="password"
-              id="password"
-              required
-              value={formData.password}
-              onChange={(e) =&gt; setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            /&gt;
-          &lt;/div&gt;
-          &lt;button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          &gt;
-            {submitting ? 'Logging in...' : 'Login'}
-          &lt;/button&gt;
-        &lt;/form&gt;
-        &lt;p className="mt-4 text-center text-sm text-gray-600"&gt;
-          Don't have an account?{' '}
-          &lt;Link href="/register" className="text-blue-600 hover:underline"&gt;
-            Contact Admin
-          &lt;/Link&gt;
-        &lt;/p&gt;
-        &lt;div className="mt-6 text-center"&gt;
-          &lt;Link href="/" className="text-gray-500 hover:text-blue-600 flex items-center justify-center gap-2 group transition-colors"&gt;
-            &lt;span className="group-hover:-translate-x-1 transition-transform"&gt;←&lt;/span&gt;
-            Back to Home
-          &lt;/Link&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
-  );
-}
-
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/dashboard/page.tsx</div><pre>'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { api } from '@/lib/api';
-import { AvailabilitySlot } from '@/lib/types';
-import { toast } from 'sonner';
-import Link from 'next/link';
-import { authApi } from '@/lib/services';
-
-export default function DashboardPage() {
-  const { user, loading, logout } = useAuth();
-  const router = useRouter();
-
-  // Availability state
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [availability, setAvailability] = useState&lt;AvailabilitySlot[]&gt;([]);
-  const [checking, setChecking] = useState(false);
-  const [pwdOpen, setPwdOpen] = useState(false);
-  const [pwdCurrent, setPwdCurrent] = useState('');
-  const [pwdNew, setPwdNew] = useState('');
-  const [pwdConfirm, setPwdConfirm] = useState('');
-  const [pwdSaving, setPwdSaving] = useState(false);
-
-  useEffect(() =&gt; {
-    if (!loading &amp;&amp; !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
-
-  const fetchAvailability = async () =&gt; {
-    setChecking(true);
-    try {
-      const response = await api.get(`/availability?date=${selectedDate}`);
-      setAvailability(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch availability');
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  // Always show spinner while loading — never redirect prematurely
-  if (loading) {
-    return (
-      &lt;div className="min-h-screen flex items-center justify-center bg-gray-50"&gt;
-        &lt;div className="text-center"&gt;
-          &lt;div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"&gt;&lt;/div&gt;
-          &lt;p className="text-gray-600"&gt;Loading...&lt;/p&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-    );
-  }
-
-  if (!user) return null;
-
-  const commonLinks = [
-    { label: '🏛️ View Halls', href: '/halls' },
-  ];
-
-  const roleLinks: Record&lt;string, { label: string; href: string }[]&gt; = {
-    admin: [
-      { label: '📋 Pending Requests', href: '/admin/pending' },
-      { label: '📅 All Bookings', href: '/admin/bookings' },
-      { label: '🏛️ Manage Halls', href: '/admin/halls' },
-      { label: '🏢 Manage Departments', href: '/admin/departments' },
-      { label: '🎓 Manage Classes', href: '/admin/classes' },
-      { label: '🏅 Manage Clubs', href: '/admin/clubs' },
-      { label: '👥 Manage Users', href: '/admin/users' },
-      { label: '📊 Reports', href: '/admin/reports' },
-    ],
-    dept_coordinator: [
-      { label: '📋 Pending Requests', href: '/coordinator/pending' },
-      { label: '🎓 Manage Classes', href: '/coordinator/classes' },
-      { label: '👩‍🏫 View Faculty', href: '/coordinator/faculty' },
-    ],
-    requester: [
-      { label: '➕ New Request', href: '/requester/request-new' },
-      { label: '📋 My Requests', href: '/requester/my-requests' },
-    ],
-    faculty: [],
-  };
-
-  const links = [...commonLinks, ...(roleLinks[user.role] ?? [])];
-
-  const handleOwnPasswordSubmit = async (e: React.FormEvent) =&gt; {
-    e.preventDefault();
-    if (pwdNew.length &lt; 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
-    if (pwdNew !== pwdConfirm) {
-      toast.error('New passwords do not match');
-      return;
-    }
-    setPwdSaving(true);
-    try {
-      await authApi.changeOwnPassword(pwdCurrent, pwdNew);
-      toast.success('Password updated. Use it on your next login.');
-      setPwdOpen(false);
-      setPwdCurrent('');
-      setPwdNew('');
-      setPwdConfirm('');
-    } catch (err: unknown) {
-      const msg =
-        err &amp;&amp; typeof err === 'object' &amp;&amp; 'response' in err
-          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
-          : undefined;
-      toast.error(msg || 'Could not update password');
-    } finally {
-      setPwdSaving(false);
-    }
-  };
-
-  const roleLabel: Record&lt;string, string&gt; = {
-    admin: 'Administrator',
-    dept_coordinator: 'Department Coordinator',
-    requester: 'Requester',
-    faculty: 'Faculty',
-  };
-
-  return (
-    &lt;div className="min-h-screen bg-gray-50 relative"&gt;
-      {pwdOpen &amp;&amp; (
-        &lt;div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true"&gt;
-          &lt;form
-            onSubmit={handleOwnPasswordSubmit}
-            className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-md p-6"
-          &gt;
-            &lt;h2 className="text-lg font-bold text-gray-900 mb-1"&gt;Change your password&lt;/h2&gt;
-            &lt;p className="text-sm text-gray-600 mb-4"&gt;Enter your current password, then choose a new one.&lt;/p&gt;
-            &lt;div className="space-y-3 mb-5"&gt;
-              &lt;div&gt;
-                &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Current password&lt;/label&gt;
-                &lt;input
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                  value={pwdCurrent}
-                  onChange={(e) =&gt; setPwdCurrent(e.target.value)}
-                /&gt;
-              &lt;/div&gt;
-              &lt;div&gt;
-                &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;New password&lt;/label&gt;
-                &lt;input
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={6}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                  value={pwdNew}
-                  onChange={(e) =&gt; setPwdNew(e.target.value)}
-                /&gt;
-              &lt;/div&gt;
-              &lt;div&gt;
-                &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Confirm new password&lt;/label&gt;
-                &lt;input
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={6}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                  value={pwdConfirm}
-                  onChange={(e) =&gt; setPwdConfirm(e.target.value)}
-                /&gt;
-              &lt;/div&gt;
-            &lt;/div&gt;
-            &lt;div className="flex gap-3 justify-end"&gt;
-              &lt;button
-                type="button"
-                onClick={() =&gt; {
-                  setPwdOpen(false);
-                  setPwdCurrent('');
-                  setPwdNew('');
-                  setPwdConfirm('');
-                }}
-                className="px-4 py-2 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 text-gray-700"
-              &gt;
-                Cancel
-              &lt;/button&gt;
-              &lt;button
-                type="submit"
-                disabled={pwdSaving}
-                className="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-              &gt;
-                {pwdSaving ? 'Saving…' : 'Update password'}
-              &lt;/button&gt;
-            &lt;/div&gt;
-          &lt;/form&gt;
-        &lt;/div&gt;
-      )}
-
-      {/* Header */}
-      &lt;header className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-md"&gt;
-        &lt;div&gt;
-          &lt;h1 className="text-xl font-bold"&gt;Seminar Hall Booking System&lt;/h1&gt;
-          &lt;p className="text-blue-200 text-sm"&gt;{roleLabel[user.role]}&lt;/p&gt;
-        &lt;/div&gt;
-        &lt;div className="flex items-center gap-4"&gt;
-          &lt;span className="text-sm text-blue-200"&gt;Welcome, {user.full_name}&lt;/span&gt;
-          &lt;button
-            onClick={logout}
-            className="bg-blue-700 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-          &gt;
-            Logout
-          &lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/header&gt;
-
-      &lt;div className="max-w-4xl mx-auto px-4 py-8"&gt;
-        &lt;div className="flex justify-between items-center mb-6"&gt;
-          &lt;h2 className="text-2xl font-bold text-gray-800"&gt;Dashboard&lt;/h2&gt;
-        &lt;/div&gt;
-
-        &lt;div className="space-y-8"&gt;
-          {/* Main Links - 3 columns on desktop for better spacing */}
-          &lt;div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"&gt;
-            {links.map((link) =&gt; (
-              &lt;a
-                key={link.href}
-                href={link.href}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-300 transition-all group"
-              &gt;
-                &lt;p className="text-lg font-semibold text-gray-800 group-hover:text-blue-700 transition-colors"&gt;
-                  {link.label}
-                &lt;/p&gt;
-              &lt;/a&gt;
-            ))}
-          &lt;/div&gt;
-
-          {/* Availability Checker - Full Width Row */}
-          &lt;div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"&gt;
-            &lt;h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"&gt;
-              &lt;span&gt;📅&lt;/span&gt; Check Hall Availability
-            &lt;/h3&gt;
-            &lt;div className="flex flex-col md:flex-row gap-4 mb-6"&gt;
-              &lt;input
-                type="date"
-                value={selectedDate}
-                onChange={(e) =&gt; setSelectedDate(e.target.value)}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-base"
-              /&gt;
-              &lt;button
-                onClick={fetchAvailability}
-                disabled={checking}
-                className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-bold whitespace-nowrap"
-              &gt;
-                {checking ? 'Checking...' : 'Check Availability'}
-              &lt;/button&gt;
-            &lt;/div&gt;
-
-            {availability.length &gt; 0 &amp;&amp; (
-              &lt;div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-4 border-t border-gray-100"&gt;
-                {availability.map((slot) =&gt; (
-                  &lt;div key={slot.hall_id} className="p-4 bg-blue-50 rounded-lg border border-blue-100 flex flex-col justify-between"&gt;
-                    &lt;div&gt;
-                      &lt;p className="font-bold text-blue-900"&gt;{slot.hall_name}&lt;/p&gt;
-                      &lt;p className="text-xs text-gray-500 mb-3"&gt;
-                        {(slot.bookings ?? []).length} booking(s) scheduled
-                      &lt;/p&gt;
-                    &lt;/div&gt;
-                    &lt;Link
-                      href={`/halls/${slot.hall_id}/calendar`}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-bold uppercase tracking-widest text-right mt-auto"
-                    &gt;
-                      View Calendar →
-                    &lt;/Link&gt;
-                  &lt;/div&gt;
-                ))}
-              &lt;/div&gt;
-            )}
-            
-            {availability.length === 0 &amp;&amp; !checking &amp;&amp; (
-              &lt;p className="text-sm text-gray-400 italic text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-200"&gt;
-                Pick a date above to see which halls are booked or free.
-              &lt;/p&gt;
-            )}
-          &lt;/div&gt;
-
-          {/* User Profile Info */}
-          &lt;div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"&gt;
-            &lt;div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-50"&gt;
-              &lt;h3 className="text-lg font-semibold text-gray-700"&gt;Your Profile&lt;/h3&gt;
-              &lt;button
-                type="button"
-                onClick={() =&gt; {
-                  setPwdOpen(true);
-                  setPwdCurrent('');
-                  setPwdNew('');
-                  setPwdConfirm('');
-                }}
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
-              &gt;
-                Change password
-              &lt;/button&gt;
-            &lt;/div&gt;
-            &lt;div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm"&gt;
-              &lt;div className="flex flex-col"&gt;
-                &lt;span className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-0.5"&gt;Full Name&lt;/span&gt;
-                &lt;span className="text-gray-800 font-semibold"&gt;{user.full_name}&lt;/span&gt;
-              &lt;/div&gt;
-              &lt;div className="flex flex-col"&gt;
-                &lt;span className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-0.5"&gt;Username&lt;/span&gt;
-                &lt;span className="text-gray-800 font-semibold"&gt;{user.username}&lt;/span&gt;
-              &lt;/div&gt;
-              &lt;div className="flex flex-col"&gt;
-                &lt;span className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-0.5"&gt;Email Address&lt;/span&gt;
-                &lt;span className="text-gray-800 font-semibold"&gt;{user.email ?? 'Not provided'}&lt;/span&gt;
-              &lt;/div&gt;
-              &lt;div className="flex flex-col"&gt;
-                &lt;span className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-0.5"&gt;Account Role&lt;/span&gt;
-                &lt;span className="text-blue-700 font-bold"&gt;{roleLabel[user.role]}&lt;/span&gt;
-              &lt;/div&gt;
-            &lt;/div&gt;
-          &lt;/div&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
-  );
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/halls/page.tsx</div><pre>'use client';
-
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { Hall } from '@/lib/types';
-import { toast } from 'sonner';
-
-export default function HallsPage() {
-  const router = useRouter();
-  const [halls, setHalls] = useState&lt;Hall[]&gt;([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() =&gt; {
-    fetchHalls();
-  }, []);
-
-  const fetchHalls = async () =&gt; {
-    try {
-      const response = await api.get('/halls');
-      setHalls(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch halls');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      &lt;div className="min-h-screen flex items-center justify-center"&gt;
-        &lt;div className="text-xl"&gt;Loading...&lt;/div&gt;
-      &lt;/div&gt;
-    );
-  }
-
-  return (
-    &lt;div className="min-h-screen bg-gradient-to-br from-blue-50 to-white"&gt;
-      &lt;div className="container mx-auto px-4 py-8"&gt;
-        &lt;div className="flex justify-between items-center mb-8"&gt;
-          &lt;h1 className="text-4xl font-bold text-blue-900"&gt;Seminar Halls&lt;/h1&gt;
-          &lt;button
-            onClick={() =&gt; router.back()}
-            className="text-blue-600 hover:underline font-medium"
-          &gt;
-            ← Back
-          &lt;/button&gt;
-        &lt;/div&gt;
-
-        &lt;div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"&gt;
-          {halls.map((hall) =&gt; (
-            &lt;div
-              key={hall.hall_id}
-              className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-            &gt;
-              &lt;h2 className="text-2xl font-semibold text-blue-900 mb-2"&gt;
-                {hall.hall_name}
-              &lt;/h2&gt;
-              &lt;p className="text-gray-600 mb-4"&gt;
-                &lt;strong&gt;Capacity:&lt;/strong&gt; {hall.capacity} people
-              &lt;/p&gt;
-              {hall.location &amp;&amp; (
-                &lt;p className="text-gray-600 mb-2"&gt;
-                  &lt;strong&gt;Location:&lt;/strong&gt; {hall.location}
-                &lt;/p&gt;
-              )}
-              &lt;div className="flex flex-wrap gap-1 mb-4"&gt;
-                {Object.entries(hall.facilities || {}).map(([f, v]) =&gt; v &amp;&amp; (
-                  &lt;span key={f} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 uppercase"&gt;
-                    {f.replace('_', ' ')}
-                  &lt;/span&gt;
-                ))}
-              &lt;/div&gt;
-              &lt;Link
-                href={`/halls/${hall.hall_id}/calendar`}
-                className="text-blue-600 hover:underline inline-block font-medium"
-              &gt;
-                View Availability →
-              &lt;/Link&gt;
-            &lt;/div&gt;
-          ))}
-        &lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
-  );
-}
-
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/halls/[id]/calendar/page.tsx</div><pre>'use client';
-
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Calendar, momentLocalizer, View } from 'react-big-calendar';
-import moment from 'moment';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { api } from '@/lib/api';
-import { Booking, Hall } from '@/lib/types';
-import { formatTime } from '@/lib/utils';
-import { toast } from 'sonner';
-
-const localizer = momentLocalizer(moment);
-
-export default function HallCalendarPage() {
-  const params = useParams();
-  const router = useRouter();
-  const hallId = params.id as string;
-  const [hall, setHall] = useState&lt;Hall | null&gt;(null);
-  const [bookings, setBookings] = useState&lt;Booking[]&gt;([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [view, setView] = useState&lt;View&gt;('day');
-
-  useEffect(() =&gt; {
-    fetchHall();
-  }, [hallId]);
-
-  useEffect(() =&gt; {
-    fetchBookings();
-  }, [hallId, selectedDate]);
-
-  const fetchHall = async () =&gt; {
-    if (!hallId) return;
-    try {
-      const response = await api.get(`/halls/${hallId}`);
-      setHall(response.data);
-    } catch (error: any) {
-      toast.error('Failed to fetch hall details');
-    }
-  };
-
-  const fetchBookings = async () =&gt; {
-    if (!hallId) return;
-    try {
-      // Fetch for the whole month surrounding selectedDate to be safe regardless of view
-      const startOfMonth = moment(selectedDate).startOf('month').format('YYYY-MM-DD');
-      const endOfMonth = moment(selectedDate).endOf('month').format('YYYY-MM-DD');
-      
-      const response = await api.get(`/availability?start_date=${startOfMonth}&amp;end_date=${endOfMonth}&amp;hall_id=${hallId}`);
-      setBookings(response.data || []);
-    } catch (error) {
-      toast.error('Failed to fetch bookings');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const events = (bookings || []).map((booking) =&gt; {
-    const datePart = booking.event_date.split('T')[0];
-    return {
-      title: booking.event_title,
-      start: moment(`${datePart} ${booking.start_time}`).toDate(),
-      end: moment(`${datePart} ${booking.end_time}`).toDate(),
-      resource: booking,
-    };
-  });
-
-  if (loading) {
-    return (
-      &lt;div className="min-h-screen flex items-center justify-center"&gt;
-        &lt;div className="text-xl"&gt;Loading...&lt;/div&gt;
-      &lt;/div&gt;
-    );
-  }
-
-  return (
-    &lt;div className="min-h-screen bg-gradient-to-br from-blue-50 to-white"&gt;
-      &lt;div className="container mx-auto px-4 py-8"&gt;
-        &lt;div className="flex items-center justify-between mb-6"&gt;
-          &lt;div&gt;
-            &lt;h1 className="text-3xl font-bold text-blue-900"&gt;
-              {hall?.hall_name || 'Hall Calendar'}
-            &lt;/h1&gt;
-            {hall &amp;&amp; (
-              &lt;p className="text-gray-600 mt-1"&gt;
-                Capacity: {hall.capacity} | {hall.location}
-              &lt;/p&gt;
-            )}
-          &lt;/div&gt;
-          &lt;button
-            onClick={() =&gt; router.back()}
-            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
-          &gt;
-            ← Back
-          &lt;/button&gt;
-        &lt;/div&gt;
-
-        &lt;div className="bg-white p-4 rounded-lg shadow-md mb-6"&gt;
-          &lt;label className="block text-sm font-medium text-gray-700 mb-2"&gt;
-            Select Date
-          &lt;/label&gt;
-          &lt;input
-            type="date"
-            value={moment(selectedDate).format('YYYY-MM-DD')}
-            onChange={(e) =&gt; setSelectedDate(moment(e.target.value).toDate())}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          /&gt;
-        &lt;/div&gt;
-
-        &lt;div className="bg-white p-6 rounded-lg shadow-md" style={{ height: '600px' }}&gt;
-          &lt;Calendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: '100%' }}
-            view={view}
-            onView={(newView) =&gt; setView(newView)}
-            views={['day', 'week', 'month']}
-            date={selectedDate}
-            onNavigate={(date) =&gt; setSelectedDate(date)}
-          /&gt;
-        &lt;/div&gt;
-
-        {(bookings || []).length &gt; 0 &amp;&amp; view === 'day' &amp;&amp; (
-          &lt;div className="mt-6 bg-white p-6 rounded-lg shadow-md"&gt;
-            &lt;h2 className="text-xl font-bold text-blue-900 mb-4"&gt;Bookings for {selectedDate.toLocaleDateString()}&lt;/h2&gt;
-            &lt;div className="space-y-2"&gt;
-              {(bookings || []).filter(b =&gt; b.event_date.split('T')[0] === moment(selectedDate).format('YYYY-MM-DD')).map((booking) =&gt; (
-                &lt;div key={booking.booking_id} className="p-3 bg-blue-50 rounded"&gt;
-                  &lt;p className="font-semibold"&gt;{booking.event_title}&lt;/p&gt;
-                  &lt;p className="text-sm text-gray-600"&gt;
-                    {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                  &lt;/p&gt;
-                &lt;/div&gt;
-              ))}
-            &lt;/div&gt;
-          &lt;/div&gt;
-        )}
-      &lt;/div&gt;
-    &lt;/div&gt;
-  );
-}
-
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/requester/request-new/page.tsx</div><pre>'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { hallsApi, requestsApi } from '@/lib/services';
-import { Hall } from '@/lib/types';
-import { toast } from 'sonner';
-
-export default function NewRequestPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  const [halls, setHalls] = useState&lt;Hall[]&gt;([]);
-  const [submitting, setSubmitting] = useState(false);
-
-  const [form, setForm] = useState({
-    hall_id: 0,
-    event_title: '',
-    event_description: '',
-    event_date: '',
-    start_time: '',
-    end_time: '',
-    expected_attendees: '',
-    purpose: '',
-  });
-
-  useEffect(() =&gt; {
-    if (!loading &amp;&amp; !user) router.push('/login');
-    if (!loading &amp;&amp; user &amp;&amp; user.role !== 'requester') router.push('/dashboard');
-  }, [user, loading, router]);
-
-  useEffect(() =&gt; {
-    hallsApi.getAll().then((res) =&gt; setHalls(res.data)).catch(() =&gt; toast.error('Failed to load halls'));
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) =&gt; {
-    e.preventDefault();
-    if (!form.hall_id) { toast.error('Please select a hall'); return; }
-
-    setSubmitting(true);
-    try {
-      await requestsApi.create({
-        hall_id: form.hall_id,
-        event_title: form.event_title,
-        event_description: form.event_description || undefined,
-        event_date: form.event_date,
-        start_time: form.start_time,
-        end_time: form.end_time,
-        expected_attendees: form.expected_attendees ? parseInt(form.expected_attendees) : undefined,
-        purpose: form.purpose || undefined,
-      });
-      toast.success('Request submitted successfully!');
-      router.push('/requester/my-requests');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to submit request');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loading) return &lt;div className="min-h-screen flex items-center justify-center"&gt;&lt;div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"&gt;&lt;/div&gt;&lt;/div&gt;;
-
-  return (
-    &lt;div className="min-h-screen bg-gray-50"&gt;
-      &lt;header className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between"&gt;
-        &lt;h1 className="text-xl font-bold"&gt;New Booking Request&lt;/h1&gt;
-        &lt;button onClick={() =&gt; router.push('/dashboard')} className="bg-blue-800 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm"&gt;Dashboard&lt;/button&gt;
-      &lt;/header&gt;
-
-      &lt;div className="max-w-2xl mx-auto px-4 py-8"&gt;
-        &lt;form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5"&gt;
-          &lt;div&gt;
-            &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Seminar Hall *&lt;/label&gt;
-            &lt;select
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              value={form.hall_id}
-              onChange={(e) =&gt; setForm({ ...form, hall_id: parseInt(e.target.value) })}
-            &gt;
-              &lt;option value={0}&gt;Select a hall...&lt;/option&gt;
-              {halls.map((h) =&gt; (
-                &lt;option key={h.hall_id} value={h.hall_id}&gt;{h.hall_name} (Capacity: {h.capacity})&lt;/option&gt;
-              ))}
-            &lt;/select&gt;
-          &lt;/div&gt;
-
-          &lt;div&gt;
-            &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Event Title *&lt;/label&gt;
-            &lt;input required type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              value={form.event_title} onChange={(e) =&gt; setForm({ ...form, event_title: e.target.value })} /&gt;
-          &lt;/div&gt;
-
-          &lt;div&gt;
-            &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Event Date *&lt;/label&gt;
-            &lt;input required type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              value={form.event_date} onChange={(e) =&gt; setForm({ ...form, event_date: e.target.value })} /&gt;
-          &lt;/div&gt;
-
-          &lt;div className="grid grid-cols-2 gap-4"&gt;
-            &lt;div&gt;
-              &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Start Time *&lt;/label&gt;
-              &lt;input required type="time" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                value={form.start_time} onChange={(e) =&gt; setForm({ ...form, start_time: e.target.value })} /&gt;
-            &lt;/div&gt;
-            &lt;div&gt;
-              &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;End Time *&lt;/label&gt;
-              &lt;input required type="time" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                value={form.end_time} onChange={(e) =&gt; setForm({ ...form, end_time: e.target.value })} /&gt;
-            &lt;/div&gt;
-          &lt;/div&gt;
-
-          &lt;div&gt;
-            &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Expected Attendees&lt;/label&gt;
-            &lt;input type="number" min={1} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              value={form.expected_attendees} onChange={(e) =&gt; setForm({ ...form, expected_attendees: e.target.value })} /&gt;
-          &lt;/div&gt;
-
-          &lt;div&gt;
-            &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Purpose&lt;/label&gt;
-            &lt;input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              value={form.purpose} onChange={(e) =&gt; setForm({ ...form, purpose: e.target.value })} /&gt;
-          &lt;/div&gt;
-
-          &lt;div&gt;
-            &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;Event Description&lt;/label&gt;
-            &lt;textarea rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              value={form.event_description} onChange={(e) =&gt; setForm({ ...form, event_description: e.target.value })} /&gt;
-          &lt;/div&gt;
-
-          &lt;button type="submit" disabled={submitting}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"&gt;
-            {submitting ? 'Submitting...' : 'Submit Request'}
-          &lt;/button&gt;
-        &lt;/form&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
-  );
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/requester/my-requests/page.tsx</div><pre>'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { requestsApi } from '@/lib/services';
-import { Request } from '@/lib/types';
-import { formatDate, formatTime } from '@/lib/utils';
-import { toast } from 'sonner';
-
-export default function MyRequestsPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  const [requests, setRequests] = useState&lt;Request[]&gt;([]);
-  const [fetching, setFetching] = useState(true);
-
-  useEffect(() =&gt; {
-    if (!loading &amp;&amp; !user) router.push('/login');
-    if (!loading &amp;&amp; user &amp;&amp; user.role !== 'requester') router.push('/dashboard');
-  }, [user, loading, router]);
-
-  useEffect(() =&gt; {
-    if (user?.role === 'requester') {
-      requestsApi.getMy()
-        .then((res) =&gt; setRequests(res.data))
-        .catch(() =&gt; toast.error('Failed to load requests'))
-        .finally(() =&gt; setFetching(false));
-    }
-  }, [user]);
-
-  const statusColor: Record&lt;string, string&gt; = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    forwarded: 'bg-blue-100 text-blue-800',
-    approved: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-    amended: 'bg-purple-100 text-purple-800',
-  };
-
-  if (loading || fetching) return (
-    &lt;div className="min-h-screen flex items-center justify-center"&gt;
-      &lt;div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"&gt;&lt;/div&gt;
-    &lt;/div&gt;
-  );
-
-  return (
-    &lt;div className="min-h-screen bg-gray-50"&gt;
-      &lt;header className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between"&gt;
-        &lt;h1 className="text-xl font-bold"&gt;My Booking Requests&lt;/h1&gt;
-        &lt;div className="flex gap-3"&gt;
-          &lt;button onClick={() =&gt; router.push('/requester/request-new')} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"&gt;
-            + New Request
-          &lt;/button&gt;
-          &lt;button onClick={() =&gt; router.push('/dashboard')} className="bg-blue-800 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm transition-colors"&gt;
-            Dashboard
-          &lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/header&gt;
-
-      &lt;div className="max-w-5xl mx-auto px-4 py-8"&gt;
-        {requests.length === 0 ? (
-          &lt;div className="text-center py-16 text-gray-500"&gt;
-            &lt;p className="text-lg"&gt;No requests yet.&lt;/p&gt;
-            &lt;button onClick={() =&gt; router.push('/requester/request-new')} className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"&gt;
-              Make Your First Request
-            &lt;/button&gt;
-          &lt;/div&gt;
-        ) : (
-          &lt;div className="space-y-4"&gt;
-            {requests.map((req) =&gt; (
-              &lt;div key={req.request_id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"&gt;
-                &lt;div className="flex items-start justify-between"&gt;
-                  &lt;div&gt;
-                    &lt;h3 className="font-semibold text-gray-800 text-lg"&gt;{req.event_title}&lt;/h3&gt;
-                    &lt;p className="text-sm text-gray-500"&gt;{formatDate(req.event_date)} &amp;bull; {formatTime(req.start_time)} – {formatTime(req.end_time)}&lt;/p&gt;
-                    &lt;p className="text-sm text-gray-600 mt-1"&gt;
-                      Hall: &lt;span className="font-medium"&gt;{req.hall_name ?? `Hall #${req.hall_id}`}&lt;/span&gt;
-                      {req.hall_location ? ` (${req.hall_location})` : ''}
-                      {req.hall_capacity ? ` • Capacity: ${req.hall_capacity}` : ''}
-                    &lt;/p&gt;
-                    {req.purpose &amp;&amp; &lt;p className="text-sm text-gray-600 mt-1"&gt;Purpose: {req.purpose}&lt;/p&gt;}
-                  &lt;/div&gt;
-                  &lt;div className="flex flex-col items-end gap-2 text-xs font-medium"&gt;
-                    &lt;span className={`px-2 py-1 rounded-full ${statusColor[req.dept_status]}`}&gt;Dept: {req.dept_status}&lt;/span&gt;
-                    &lt;span className={`px-2 py-1 rounded-full ${statusColor[req.admin_status]}`}&gt;Admin: {req.admin_status}&lt;/span&gt;
-                  &lt;/div&gt;
-                &lt;/div&gt;
-                {(req.dept_remarks || req.admin_remarks) &amp;&amp; (
-                  &lt;div className="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1"&gt;
-                    {req.dept_remarks &amp;&amp; &lt;p&gt;Dept remarks: {req.dept_remarks}&lt;/p&gt;}
-                    {req.admin_remarks &amp;&amp; &lt;p&gt;Admin remarks: {req.admin_remarks}&lt;/p&gt;}
-                  &lt;/div&gt;
-                )}
-              &lt;/div&gt;
-            ))}
-          &lt;/div&gt;
-        )}
-      &lt;/div&gt;
-    &lt;/div&gt;
-  );
-}
-</pre></section>
-
-  <section class="file-block"><div class="file-path">frontend/app/coordinator/pending/page.tsx</div><pre>'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { requestsApi } from '@/lib/services';
-import { Request } from '@/lib/types';
-import { formatDate, formatTime } from '@/lib/utils';
-import { toast } from 'sonner';
-
-export default function CoordinatorPendingPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  const [requests, setRequests] = useState&lt;Request[]&gt;([]);
-  const [fetching, setFetching] = useState(true);
-  const [reviewing, setReviewing] = useState&lt;number | null&gt;(null);
-
-  useEffect(() =&gt; {
-    if (!loading &amp;&amp; !user) router.push('/login');
-    if (!loading &amp;&amp; user &amp;&amp; user.role !== 'dept_coordinator') router.push('/dashboard');
-  }, [user, loading, router]);
-
-  const fetchRequests = () =&gt; {
-    requestsApi.getDeptPending()
-      .then((res) =&gt; setRequests(res.data))
-      .catch(() =&gt; toast.error('Failed to load requests'))
-      .finally(() =&gt; setFetching(false));
-  };
-
-  useEffect(() =&gt; {
-    if (user?.role === 'dept_coordinator') fetchRequests();
-  }, [user]);
-
-  const handleReview = async (id: number, action: 'approve' | 'reject') =&gt; {
-    const remarks = action === 'reject' ? window.prompt('Enter rejection remarks (optional):') ?? undefined : undefined;
-    setReviewing(id);
-    try {
-      await requestsApi.deptReview(id, { action, remarks });
-      toast.success(`Request ${action === 'approve' ? 'forwarded to admin' : 'rejected'}`);
-      fetchRequests();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Action failed');
-    } finally {
-      setReviewing(null);
-    }
-  };
-
-  if (loading || fetching) return &lt;div className="min-h-screen flex items-center justify-center"&gt;&lt;div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"&gt;&lt;/div&gt;&lt;/div&gt;;
-
-  return (
-    &lt;div className="min-h-screen bg-gray-50"&gt;
-      &lt;header className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between"&gt;
-        &lt;h1 className="text-xl font-bold"&gt;Department Pending Requests&lt;/h1&gt;
-        &lt;button onClick={() =&gt; router.push('/dashboard')} className="bg-blue-800 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm"&gt;Dashboard&lt;/button&gt;
-      &lt;/header&gt;
-
-      &lt;div className="max-w-5xl mx-auto px-4 py-8"&gt;
-        {requests.length === 0 ? (
-          &lt;div className="text-center py-16 text-gray-500"&gt;&lt;p className="text-lg"&gt;No pending requests for your department.&lt;/p&gt;&lt;/div&gt;
-        ) : (
-          &lt;div className="space-y-4"&gt;
-            {requests.map((req) =&gt; (
-              &lt;div key={req.request_id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"&gt;
-                &lt;div className="flex items-start justify-between"&gt;
-                  &lt;div&gt;
-                    &lt;h3 className="font-semibold text-gray-800 text-lg"&gt;{req.event_title}&lt;/h3&gt;
-                    &lt;p className="text-sm text-gray-500"&gt;{formatDate(req.event_date)} &amp;bull; {formatTime(req.start_time)} – {formatTime(req.end_time)}&lt;/p&gt;
-                    &lt;p className="text-sm text-gray-600 mt-1"&gt;
-                      Hall: &lt;span className="font-medium"&gt;{req.hall_name ?? `Hall #${req.hall_id}`}&lt;/span&gt;
-                      {req.hall_location ? ` (${req.hall_location})` : ''}
-                      {req.hall_capacity ? ` • Capacity: ${req.hall_capacity}` : ''}
-                    &lt;/p&gt;
-                    {req.purpose &amp;&amp; &lt;p className="text-sm text-gray-600 mt-1"&gt;Purpose: {req.purpose}&lt;/p&gt;}
-                    {req.expected_attendees &amp;&amp; &lt;p className="text-sm text-gray-600"&gt;Attendees: {req.expected_attendees}&lt;/p&gt;}
-                  &lt;/div&gt;
-                  &lt;div className="flex gap-2"&gt;
-                    &lt;button
-                      disabled={reviewing === req.request_id}
-                      onClick={() =&gt; handleReview(req.request_id, 'approve')}
-                      className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                    &gt;
-                      ✓ Forward
-                    &lt;/button&gt;
-                    &lt;button
-                      disabled={reviewing === req.request_id}
-                      onClick={() =&gt; handleReview(req.request_id, 'reject')}
-                      className="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                    &gt;
-                      ✗ Reject
-                    &lt;/button&gt;
-                  &lt;/div&gt;
-                &lt;/div&gt;
-              &lt;/div&gt;
-            ))}
-          &lt;/div&gt;
-        )}
-      &lt;/div&gt;
-    &lt;/div&gt;
-  );
-}
-</pre></section>
-
   <section class="file-block"><div class="file-path">frontend/lib/api.ts</div><pre>import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -1250,7 +177,7 @@ export function useAuth() {
 }
 </pre></section>
 
-  <section class="file-block"><div class="file-path">frontend/lib/types.ts</div><pre>// User and Auth Types
+  <section class="file-block"><div class="file-path">frontend/lib/types.ts (excerpt: L1–109)</div><pre>// User and Auth Types
 export type UserRole = 'admin' | 'dept_coordinator' | 'requester' | 'faculty';
 export type ApprovalStatus = 'pending' | 'forwarded' | 'approved' | 'rejected' | 'amended';
 export type BookingStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_show';
@@ -1359,42 +286,10 @@ export interface ReviewRequestInput {
   action: 'approve' | 'reject';
   remarks?: string;
 }
-
-export interface Department {
-  dept_id: number;
-  dept_name: string;
-  dept_code?: string;
-  created_at: string;
-}
-
-export interface Class {
-  class_id: number;
-  class_name: string;
-  dept_id: number;
-  year: string;
-}
-
-export interface Club {
-  club_id: number;
-  club_name: string;
-  dept_id?: number;
-  description?: string;
-}
-
-export interface HallUsageReport {
-  hall_id: number;
-  hall_name: string;
-  total_bookings: number;
-}
-
-export interface DepartmentUsageReport {
-  dept_id: number;
-  dept_name: string;
-  total_requests: number;
-}
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">frontend/lib/services.ts</div><pre>import { api } from './api';
+  <section class="file-block"><div class="file-path">frontend/lib/services.ts (excerpt: L1–30, L70–84)</div><pre>import { api } from './api';
 import {
   Hall, Booking, Department, Class, Club,
   HallUsageReport, DepartmentUsageReport,
@@ -1424,45 +319,7 @@ export const authApi = {
       new_password: newPassword,
     }),
 };
-
-// ─── HALLS ───────────────────────────────────────────────────────────────────
-
-export const hallsApi = {
-  getAll: () =&gt; api.get&lt;Hall[]&gt;('/halls'),
-
-  getAvailability: (hallId: number, date: string) =&gt;
-    api.get&lt;Booking[]&gt;(`/availability?hall_id=${hallId}&amp;date=${date}`),
-
-  create: (data: Omit&lt;Hall, 'hall_id' | 'is_active'&gt;) =&gt; api.post&lt;Hall&gt;('/halls', data),
-  update: (id: number, data: Partial&lt;Hall&gt;) =&gt; api.put&lt;Hall&gt;(`/halls/${id}`, data),
-  delete: (id: number) =&gt; api.delete(`/halls/${id}`),
-};
-
-// ─── DEPARTMENTS ─────────────────────────────────────────────────────────────
-
-export const departmentsApi = {
-  getAll: () =&gt; api.get&lt;Department[]&gt;('/departments'),
-  create: (dept_name: string, dept_code: string) =&gt; api.post&lt;Department&gt;('/departments', { dept_name, dept_code }),
-  update: (id: number, dept_name: string, dept_code: string) =&gt; api.put(`/departments/${id}`, { dept_name, dept_code }),
-  delete: (id: number) =&gt; api.delete(`/departments/${id}`),
-};
-
-// ─── CLASSES ─────────────────────────────────────────────────────────────────
-
-export const classesApi = {
-  getByDept: (deptId: number) =&gt; api.get&lt;Class[]&gt;(`/classes?dept_id=${deptId}`),
-  create: (data: { class_name: string; dept_id: number; year: string }) =&gt; api.post&lt;Class&gt;('/classes', data),
-  delete: (id: number) =&gt; api.delete(`/classes/${id}`),
-};
-
-// ─── CLUBS ───────────────────────────────────────────────────────────────────
-
-export const clubsApi = {
-  getAll: (deptId?: number) =&gt; api.get&lt;Club[]&gt;(deptId ? `/clubs?dept_id=${deptId}` : '/clubs'),
-  create: (data: { club_name: string; dept_id?: number; description?: string }) =&gt; api.post&lt;Club&gt;('/clubs', data),
-  delete: (id: number) =&gt; api.delete(`/clubs/${id}`),
-};
-
+// ...
 // ─── REQUESTS ────────────────────────────────────────────────────────────────
 
 export const requestsApi = {
@@ -1478,163 +335,237 @@ export const requestsApi = {
   getAdminPending: () =&gt; api.get&lt;Request[]&gt;('/requests/admin-pending'),
   adminReview: (id: number, payload: ReviewRequestInput) =&gt; api.patch(`/requests/${id}/admin-review`, payload),
 };
-
-// ─── BOOKINGS ────────────────────────────────────────────────────────────────
-
-export const bookingsApi = {
-  getAll: () =&gt; api.get&lt;Booking[]&gt;('/bookings'),
-  cancel: (id: number) =&gt; api.patch(`/bookings/${id}/cancel`),
-};
-
-// ─── USERS ───────────────────────────────────────────────────────────────────
-
-export const usersApi = {
-  getAll: (role?: string) =&gt; api.get&lt;User[]&gt;(role ? `/users?role=${role}` : '/users'),
-  getFaculties: () =&gt; api.get&lt;User[]&gt;('/users/faculties'),
-  deactivate: (id: number) =&gt; api.delete(`/users/${id}`),
-  /** Admin: set a new password for any user */
-  changePassword: (userId: number, newPassword: string) =&gt;
-    api.patch(`/users/${userId}/password`, { new_password: newPassword }),
-};
-
-// ─── REPORTS ─────────────────────────────────────────────────────────────────
-
-export const reportsApi = {
-  hallUsage: () =&gt; api.get&lt;HallUsageReport[]&gt;('/reports/hall-usage'),
-  deptUsage: () =&gt; api.get&lt;DepartmentUsageReport[]&gt;('/reports/department-usage'),
-};
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">frontend/components/Navbar.tsx</div><pre>'use client';
+  <section class="file-block"><div class="file-path">frontend/app/login/page.tsx (excerpt: L1–45)</div><pre>'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { authApi } from '@/lib/services';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from 'sonner';
 
-export default function Navbar() {
-  const pathname = usePathname();
+export default function LoginPage() {
+  const router = useRouter();
+  const { user, loading, refresh } = useAuth();
+  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  // If already logged in, redirect to dashboard
+  useEffect(() =&gt; {
+    if (!loading &amp;&amp; user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
+
+  const handleSubmit = async (e: React.FormEvent) =&gt; {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await authApi.login(formData.username, formData.password);
+      // Refresh AuthContext so user state is populated BEFORE navigating
+      await refresh();
+      toast.success('Login successful!');
+      router.push('/dashboard');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Login failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    &lt;nav className="bg-blue-900 text-white shadow-lg"&gt;
-      &lt;div className="container mx-auto px-4"&gt;
-        &lt;div className="flex justify-between items-center py-4"&gt;
-          &lt;Link href="/" className="text-2xl font-bold"&gt;
-            Seminar Hall Booking
-          &lt;/Link&gt;
-          &lt;div className="flex gap-6"&gt;
-            &lt;Link
-              href="/"
-              className={`hover:text-blue-200 ${pathname === '/' ? 'underline' : ''}`}
-            &gt;
-              Home
-            &lt;/Link&gt;
-            &lt;Link
-              href="/halls"
-              className={`hover:text-blue-200 ${pathname === '/halls' ? 'underline' : ''}`}
-            &gt;
-              Halls
-            &lt;/Link&gt;
-            &lt;Link
-              href="/dashboard"
-              className={`hover:text-blue-200 ${pathname === '/dashboard' ? 'underline' : ''}`}
-            &gt;
-              Dashboard
-            &lt;/Link&gt;
-            &lt;Link
-              href="/login"
-              className="bg-blue-700 px-4 py-2 rounded hover:bg-blue-600"
-            &gt;
-              Login
-            &lt;/Link&gt;
-          &lt;/div&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/nav&gt;
-  );
-}
-
+    &lt;div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white"&gt;
+      &lt;div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md"&gt;
+        &lt;h1 className="text-3xl font-bold text-blue-900 mb-6 text-center"&gt;
+          Login
+        &lt;/h1&gt;
+        &lt;form onSubmit={handleSubmit} className="space-y-4"&gt;
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">frontend/next.config.ts</div><pre>import type { NextConfig } from "next";
+  <section class="file-block"><div class="file-path">frontend/app/requester/request-new/page.tsx (excerpt: L1–55)</div><pre>'use client';
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { hallsApi, requestsApi } from '@/lib/services';
+import { Hall } from '@/lib/types';
+import { toast } from 'sonner';
 
-export default nextConfig;
+export default function NewRequestPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [halls, setHalls] = useState&lt;Hall[]&gt;([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [form, setForm] = useState({
+    hall_id: 0,
+    event_title: '',
+    event_description: '',
+    event_date: '',
+    start_time: '',
+    end_time: '',
+    expected_attendees: '',
+    purpose: '',
+  });
+
+  useEffect(() =&gt; {
+    if (!loading &amp;&amp; !user) router.push('/login');
+    if (!loading &amp;&amp; user &amp;&amp; user.role !== 'requester') router.push('/dashboard');
+  }, [user, loading, router]);
+
+  useEffect(() =&gt; {
+    hallsApi.getAll().then((res) =&gt; setHalls(res.data)).catch(() =&gt; toast.error('Failed to load halls'));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) =&gt; {
+    e.preventDefault();
+    if (!form.hall_id) { toast.error('Please select a hall'); return; }
+
+    setSubmitting(true);
+    try {
+      await requestsApi.create({
+        hall_id: form.hall_id,
+        event_title: form.event_title,
+        event_description: form.event_description || undefined,
+        event_date: form.event_date,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        expected_attendees: form.expected_attendees ? parseInt(form.expected_attendees) : undefined,
+        purpose: form.purpose || undefined,
+      });
+      toast.success('Request submitted successfully!');
+      router.push('/requester/my-requests');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to submit request');
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">frontend/tsconfig.json</div><pre>{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"]
+  <section class="file-block"><div class="file-path">frontend/app/coordinator/pending/page.tsx (excerpt: L1–50)</div><pre>'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { requestsApi } from '@/lib/services';
+import { Request } from '@/lib/types';
+import { formatDate, formatTime } from '@/lib/utils';
+import { toast } from 'sonner';
+
+export default function CoordinatorPendingPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [requests, setRequests] = useState&lt;Request[]&gt;([]);
+  const [fetching, setFetching] = useState(true);
+  const [reviewing, setReviewing] = useState&lt;number | null&gt;(null);
+
+  useEffect(() =&gt; {
+    if (!loading &amp;&amp; !user) router.push('/login');
+    if (!loading &amp;&amp; user &amp;&amp; user.role !== 'dept_coordinator') router.push('/dashboard');
+  }, [user, loading, router]);
+
+  const fetchRequests = () =&gt; {
+    requestsApi.getDeptPending()
+      .then((res) =&gt; setRequests(res.data))
+      .catch(() =&gt; toast.error('Failed to load requests'))
+      .finally(() =&gt; setFetching(false));
+  };
+
+  useEffect(() =&gt; {
+    if (user?.role === 'dept_coordinator') fetchRequests();
+  }, [user]);
+
+  const handleReview = async (id: number, action: 'approve' | 'reject') =&gt; {
+    const remarks = action === 'reject' ? window.prompt('Enter rejection remarks (optional):') ?? undefined : undefined;
+    setReviewing(id);
+    try {
+      await requestsApi.deptReview(id, { action, remarks });
+      toast.success(`Request ${action === 'approve' ? 'forwarded to admin' : 'rejected'}`);
+      fetchRequests();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Action failed');
+    } finally {
+      setReviewing(null);
     }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": ["node_modules"]
-}
+  };
+
+  if (loading || fetching) return &lt;div className="min-h-screen flex items-center justify-center"&gt;&lt;div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"&gt;&lt;/div&gt;&lt;/div&gt;;
+
+  return (
+// ...
 </pre></section>
 
-  <section class="file-block"><div class="file-path">frontend/package.json</div><pre>{
-  "name": "frontend",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
-    "@types/moment": "^2.11.29",
-    "@types/react-big-calendar": "^1.16.3",
-    "axios": "^1.13.2",
-    "date-fns": "^4.1.0",
-    "moment": "^2.30.1",
-    "next": "16.0.10",
-    "react": "19.2.0",
-    "react-big-calendar": "^1.19.4",
-    "react-dom": "19.2.0",
-    "react-hook-form": "^7.66.1",
-    "sonner": "^2.0.7",
-    "zod": "^4.1.13"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.5",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
-}
+  <section class="file-block"><div class="file-path">frontend/app/halls/[id]/calendar/page.tsx (excerpt: L1–68)</div><pre>'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Calendar, momentLocalizer, View } from 'react-big-calendar';
+import moment from 'moment';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { api } from '@/lib/api';
+import { Booking, Hall } from '@/lib/types';
+import { formatTime } from '@/lib/utils';
+import { toast } from 'sonner';
+
+const localizer = momentLocalizer(moment);
+
+export default function HallCalendarPage() {
+  const params = useParams();
+  const router = useRouter();
+  const hallId = params.id as string;
+  const [hall, setHall] = useState&lt;Hall | null&gt;(null);
+  const [bookings, setBookings] = useState&lt;Booking[]&gt;([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [view, setView] = useState&lt;View&gt;('day');
+
+  useEffect(() =&gt; {
+    fetchHall();
+  }, [hallId]);
+
+  useEffect(() =&gt; {
+    fetchBookings();
+  }, [hallId, selectedDate]);
+
+  const fetchHall = async () =&gt; {
+    if (!hallId) return;
+    try {
+      const response = await api.get(`/halls/${hallId}`);
+      setHall(response.data);
+    } catch (error: any) {
+      toast.error('Failed to fetch hall details');
+    }
+  };
+
+  const fetchBookings = async () =&gt; {
+    if (!hallId) return;
+    try {
+      // Fetch for the whole month surrounding selectedDate to be safe regardless of view
+      const startOfMonth = moment(selectedDate).startOf('month').format('YYYY-MM-DD');
+      const endOfMonth = moment(selectedDate).endOf('month').format('YYYY-MM-DD');
+      
+      const response = await api.get(`/availability?start_date=${startOfMonth}&amp;end_date=${endOfMonth}&amp;hall_id=${hallId}`);
+      setBookings(response.data || []);
+    } catch (error) {
+      toast.error('Failed to fetch bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const events = (bookings || []).map((booking) =&gt; {
+    const datePart = booking.event_date.split('T')[0];
+    return {
+      title: booking.event_title,
+      start: moment(`${datePart} ${booking.start_time}`).toDate(),
+      end: moment(`${datePart} ${booking.end_time}`).toDate(),
+      resource: booking,
+    };
+  });
+// ...
 </pre></section>
 
 </body>

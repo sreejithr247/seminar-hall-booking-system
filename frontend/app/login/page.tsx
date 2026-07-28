@@ -77,12 +77,6 @@ export default function LoginPage() {
             {submitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Don't have an account?{' '}
-          <Link href="/register" className="text-blue-600 hover:underline">
-            Contact Admin
-          </Link>
-        </p>
         <div className="mt-6 text-center">
           <Link href="/" className="text-gray-500 hover:text-blue-600 flex items-center justify-center gap-2 group transition-colors">
             <span className="group-hover:-translate-x-1 transition-transform">←</span>

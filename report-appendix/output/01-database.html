@@ -5,39 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Project Coding — Database schema (PostgreSQL)</title>
   <style>
-@page { size: A4; margin: 11mm 9mm 14mm 32mm; }
+@page { size: A4; margin: 9mm 8mm 12mm 30mm; }
 * { box-sizing: border-box; }
 body {
   font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
-  font-size: 8pt;
-  line-height: 1.24;
+  font-size: 7.5pt;
+  line-height: 1.14;
   color: #111;
   max-width: 100%;
 }
-h1 { font-size: 11pt; margin: 0 0 0.35em; }
+h1 { font-size: 10.5pt; margin: 0 0 0.3em; }
 .github-notice {
-  font-size: 8pt;
+  font-size: 7.5pt;
   background: #f5f5f5;
   border: 1px solid #ddd;
-  padding: 0.5em 0.75em;
-  margin-bottom: 0.9em;
+  padding: 0.4em 0.65em;
+  margin-bottom: 0.7em;
   page-break-inside: avoid;
 }
 .github-notice strong { font-weight: 600; }
-.meta { font-size: 8pt; color: #444; margin-bottom: 0.85em; }
-.file-block { margin-bottom: 0.85em; }
+.meta { font-size: 7.5pt; color: #444; margin-bottom: 0.55em; }
+.file-block { margin-bottom: 0.45em; }
 .file-path {
   font-weight: bold;
-  font-size: 8pt;
-  margin: 0.65em 0 0.25em;
-  padding-bottom: 0.15em;
+  font-size: 7.5pt;
+  margin: 0.4em 0 0.15em;
+  padding-bottom: 0.1em;
   border-bottom: 1px solid #ccc;
   page-break-after: avoid;
 }
 .part-heading {
-  font-size: 11pt;
-  margin: 1.1em 0 0.35em;
-  padding-bottom: 0.2em;
+  font-size: 10.5pt;
+  margin: 0.75em 0 0.25em;
+  padding-bottom: 0.12em;
   border-bottom: 2px solid #888;
   page-break-before: always;
   page-break-after: avoid;
@@ -47,42 +47,35 @@ h1 { font-size: 11pt; margin: 0 0 0.35em; }
   margin-top: 0;
 }
 .part-meta {
-  font-size: 8pt;
+  font-size: 7.5pt;
   color: #444;
-  margin: 0 0 0.9em;
+  margin: 0 0 0.55em;
 }
 pre {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;
+  orphans: 3;
+  widows: 3;
 }
 </style>
 </head>
 <body>
   <h1>Project Coding — Database schema (PostgreSQL)</h1>
-  <p class="meta">Seminar Hall Booking System — DDL only</p>
+  <p class="meta">Seminar Hall Booking System — full Tables.sql DDL</p>
   <div class="github-notice">
-    <strong>Full source code</strong> — Included representative code segments only (routing, auth, halls, requests, coordinator workflow). Admin/management handlers and other pages follow the same patterns.
+    <strong>Full source code</strong> — Included the most important code segments only (core schema, routing, JWT auth, request creation, department approval, overlap checks, and key UI logic). Omitted lines are marked with // ... or -- .... Full sources are on GitHub.
     Repository: <a href="https://github.com/sreejithr247/seminar-hall-booking-system">https://github.com/sreejithr247/seminar-hall-booking-system</a>.
   </div>
   <section class="file-block"><div class="file-path">DB/Tables.sql</div><pre>-- =============================================
--- SEMINAR HALL BOOKING SYSTEM (FINAL FIXED VERSION)
--- Complete PostgreSQL Schema for IGNOU BCA BCSP-064
--- Topic: 53. Seminar Hall Booking
--- Fix: Removed faulty EXCLUDE; using proven TRIGGER for overlaps
--- Database: PostgreSQL 15+ | Tested Syntax: 100% Clean
+-- SEMINAR HALL BOOKING SYSTEM SCHEMA
 -- =============================================
-
--- Drop existing objects if re-running (for development only)
--- DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
-
 -- 1. Custom ENUM Types
 CREATE TYPE USER_ROLE AS ENUM ('admin', 'dept_coordinator', 'requester', 'faculty');
 CREATE TYPE APPROVAL_STATUS AS ENUM ('pending', 'forwarded', 'approved', 'rejected', 'amended');
 CREATE TYPE BOOKING_STATUS AS ENUM ('confirmed', 'cancelled', 'completed', 'no_show');
 CREATE TYPE REQUESTER_TYPE AS ENUM ('class', 'club');
-
 -- 2. Core Tables
 CREATE TABLE departments (
     dept_id      SERIAL PRIMARY KEY,
@@ -114,7 +107,6 @@ CREATE TABLE halls (
     facilities   JSONB DEFAULT '{}',             -- {"projector": true, "ac": true}
     is_active    BOOLEAN DEFAULT true
 );
-
 -- 3. Users &amp; Requesters (Class or Club representative)
 CREATE TABLE users (
     user_id       SERIAL PRIMARY KEY,
@@ -129,7 +121,6 @@ CREATE TABLE users (
     created_at    TIMESTAMPTZ DEFAULT NOW(),
     updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- One user can represent only ONE entity: either a Class or a Club
 CREATE TABLE requesters (
     requester_id      SERIAL PRIMARY KEY,
@@ -144,7 +135,6 @@ CREATE TABLE requesters (
             (requester_type = 'club' AND club_id IS NOT NULL AND class_id IS NULL)
         )
 );
-
 -- 4. Booking Requests &amp; Workflow
 CREATE TABLE requests (
     request_id          SERIAL PRIMARY KEY,
@@ -169,7 +159,6 @@ CREATE TABLE requests (
     is_cancelled        BOOLEAN DEFAULT false,
     CONSTRAINT valid_time CHECK (end_time &gt; start_time)
 );
-
 -- 5. Final Bookings (only after admin approval)
 CREATE TABLE bookings (
     booking_id     SERIAL PRIMARY KEY,
@@ -185,8 +174,6 @@ CREATE TABLE bookings (
     completed_at   TIMESTAMPTZ,
     CONSTRAINT valid_booking_time CHECK (end_time &gt; start_time)
 );
-
--- FIXED OVERLAP PREVENTION: Trigger function (100% reliable, no syntax issues)
 -- Checks: No other active booking in same hall/date where times overlap
 CREATE OR REPLACE FUNCTION check_booking_overlap()
 RETURNS TRIGGER AS $$
@@ -212,14 +199,12 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 -- Attach trigger to bookings table
 CREATE TRIGGER trig_check_booking_overlap
     BEFORE INSERT OR UPDATE OF start_time, end_time, event_date, hall_id, status
     ON bookings
     FOR EACH ROW
     EXECUTE FUNCTION check_booking_overlap();
-
 -- 6. Audit &amp; Session Management
 CREATE TABLE booking_audit_log (
     log_id      SERIAL PRIMARY KEY,
@@ -252,7 +237,6 @@ CREATE TABLE notifications (
     is_read     BOOLEAN DEFAULT false,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- 7. Indexes for Performance (helps with overlap queries too)
 CREATE INDEX idx_bookings_overlap_check ON bookings (hall_id, event_date, start_time, end_time) WHERE status != 'cancelled';
 CREATE INDEX idx_requests_date_hall ON requests(event_date, hall_id);
@@ -273,49 +257,7 @@ CREATE TRIGGER trig_update_session_activity
     BEFORE UPDATE ON login_sessions
     FOR EACH ROW
     EXECUTE FUNCTION update_session_activity();
-
--- =============================================
--- SAMPLE DATA (Test Overlap Prevention)
--- =============================================
-
--- Insert sample data
-INSERT INTO departments (dept_name, dept_code) VALUES 
-('Computer Science', 'CSE'), ('Electronics', 'ECE');
-
-INSERT INTO classes (class_name, dept_id, year) VALUES 
-('BCA 2023-26', 1, '2023-26');
-
-INSERT INTO clubs (club_name, dept_id) VALUES 
-('Robotics Club', 1);
-
-INSERT INTO users (username, password_hash, full_name, email, role, dept_id) VALUES 
-('admin1', 'hashedpass_admin', 'Admin User', 'admin@college.edu', 'admin', 1),
-('rep1', 'hashedpass_rep', 'Class Rep', 'rep@college.edu', 'requester', 1);
-
-INSERT INTO requesters (user_id, requester_type, class_id) VALUES 
-(2, 'class', 1);  -- User 2 represents Class 1
-
-INSERT INTO halls (hall_name, capacity, location) VALUES
-('Main Seminar Hall', 200, 'Admin Block');
-
--- Create a request and booking (succeeds)
-INSERT INTO requests (requester_id, hall_id, event_title, event_date, start_time, end_time, expected_attendees, purpose) VALUES
-(1, 1, 'Test Event 1', '2025-12-01', '09:00:00', '10:00:00', 50, 'Department Meeting');
-
-INSERT INTO bookings (request_id, hall_id, requester_id, event_title, event_date, start_time, end_time) VALUES
-(1, 1, 1, 'Test Event 1', '2025-12-01', '09:00:00', '10:00:00');  -- Succeeds
-
--- This NEXT INSERT WILL FAIL with overlap error (uncomment to test):
--- INSERT INTO bookings (request_id, hall_id, requester_id, event_title, event_date, start_time, end_time) VALUES
--- (2, 1, 1, 'Overlapping Test', '2025-12-01', '09:30:00', '11:00:00');  -- ERROR: Overlap detected!
-
--- Success message
-\echo '================================================'
-\echo 'Seminar Hall Booking System Schema Created SUCCESSFULLY!'
-\echo 'No Syntax Errors | Overlap Prevention: Trigger Active'
-\echo 'Ready for BCSP-064: Test with sample data above'
-\echo 'Current Date: November 28, 2025 (as per context)'
-\echo '================================================'</pre></section>
+</pre></section>
 
 </body>
 </html>

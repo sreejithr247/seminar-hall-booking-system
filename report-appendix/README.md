@@ -2,19 +2,24 @@
 
 Generates merged **HTML** and **PDF** documents titled **Project Coding** (not “Appendix”) for the database schema, backend (Go), and frontend (Next.js).
 
-## Default: curated (shorter report)
+## Default: curated (~20–25 pages)
 
 ```bash
 python build_appendix.py
 ```
 
-- **Database:** `DB/Tables.sql` only (no seed file).
-- **Backend:** representative Go files (routing, config, DB, middleware, models, auth/request/hall/coordinator stacks). Admin/management and `cmd/*` are omitted; see GitHub for the rest.
-- **Frontend:** representative pages and `lib/*`, configs; omits duplicate admin screens, landing `page.tsx`, `utils.ts`, and large lockfiles.
-- **Layout:** A4 with a **wider left margin** (bind side) and tighter top/right/bottom; smaller type in curated mode to save pages.
-- **PDF:** headless Edge/Chrome uses **`--no-pdf-header-footer`** so there is **no date/time header or file-name footer** in generated PDFs.
+Includes **only the most important code segments** for the project report (omitted spans marked `// ...` or `-- ...`):
+
+- **Database:** full `DB/Tables.sql` (no separate seed file).
+- **Backend:** entry/config/DB, router, JWT middleware, core models, auth login, request create stack, coordinator review, overlap check.
+- **Frontend:** API client, auth context, domain types, auth/requests API helpers, login/request/approval/calendar logic excerpts.
+- **Layout:** A4 with a **wider left margin** (bind side) and compact type to fit report length.
+- **PDF:** headless Edge/Chrome uses **`--no-pdf-header-footer`** so there is **no date/time header or file-name footer**.
 - **Page numbers:** stamped centred at the bottom after PDF generation, starting at **40** by default (`--page-start N`, or `--no-page-numbers`). Requires `pip install -r report-appendix/requirements.txt`.
+- **Page border:** a thin rectangular frame is stamped on every PDF page; the **left** edge sits just outside the code (bind margin stays outside the frame).
 - Each document starts with a **GitHub notice** (URL from `git remote origin` or **`REPORT_GITHUB_URL`**).
+
+Edit **`CURATED_DB_FILES`**, **`CURATED_BACKEND_FILES`**, and **`CURATED_FRONTEND_FILES`** at the top of `build_appendix.py` to change which files/line ranges are included. Use `None` for a whole file, or `[(start, end), ...]` for 1-indexed excerpts.
 
 ## Full dump (longer)
 
@@ -43,5 +48,3 @@ If headless PDF fails, open the `.html` in a browser, **Print → Save as PDF**,
 export REPORT_GITHUB_URL=https://github.com/you/your-repo
 python build_appendix.py
 ```
-
-Edit **`CURATED_BACKEND_FILES`** and **`CURATED_FRONTEND_FILES`** at the top of `build_appendix.py` to change the curated file lists.
