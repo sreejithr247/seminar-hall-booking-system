@@ -94,7 +94,6 @@ export const bookingsApi = {
 
 export const usersApi = {
   getAll: (role?: string) => api.get<User[]>(role ? `/users?role=${role}` : '/users'),
-  getFaculties: () => api.get<User[]>('/users/faculties'),
   deactivate: (id: number) => api.delete(`/users/${id}`),
   /** Admin: set a new password for any user */
   changePassword: (userId: number, newPassword: string) =>

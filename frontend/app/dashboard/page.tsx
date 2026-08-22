@@ -72,8 +72,6 @@ export default function DashboardPage() {
     ],
     dept_coordinator: [
       { label: '📋 Pending Requests', href: '/coordinator/pending' },
-      { label: '🎓 Manage Classes', href: '/coordinator/classes' },
-      { label: '👩‍🏫 View Faculty', href: '/coordinator/faculty' },
     ],
     requester: [
       { label: '➕ New Request', href: '/requester/request-new' },

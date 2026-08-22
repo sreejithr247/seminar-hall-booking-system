@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "a1b2c3d4-seminar-hall-booking-api",
+    "_postman_id": "8e2c1a4b-6d7f-4a91-b3e5-1a2b3c4d5e6f",
     "name": "Seminar Hall Booking API",
-    "description": "REST API for the Seminar Hall Booking System (Go/Gin backend).\n\n## Setup\n1. Set collection variable **baseUrl** (default `http://localhost:8080`).\n2. Run **Auth → Login** with a valid user; the **Tests** tab saves `token` from the response.\n3. Protected folders inherit **Bearer Token** `{{token}}` (same as `Authorization: Bearer` accepted by the API; cookie `auth_token` also works from browsers).\n\n## Roles\n- **Requester**: create/list own requests.\n- **dept_coordinator**: dept queue, dept review, faculties, classes.\n- **admin**: full management, reports, bookings, users, departments, halls, clubs.\n\nSource: `backend/internal/router/router.go`.",
+    "description": "Complete REST collection for the Seminar Hall Booking System (Go/Gin).\n\n## Import\n1. Postman → **Import** → select this file and `Seminar-Hall-Booking-API.postman_environment.json`.\n2. Select environment **Seminar Hall Booking (Local)** (`baseUrl` = `http://localhost:8080`).\n3. Start the backend (`cd backend && go run main.go`).\n4. Run **Auth → Login as Admin** (or Coordinator / Requester). Tests save JWT to `{{token}}`.\n\n## Seed logins (after `go run ./cmd/seed`)\n| Role | Username | Password |\n|------|----------|----------|\n| admin | `admin` | `admin123` |\n| dept_coordinator | `coordinator1` | `coord123` |\n| requester | `student1` | `req123` |\n\nProtected folders send `Authorization: Bearer {{token}}`. The API also accepts cookie `auth_token` from browsers.\n\nSource: `backend/internal/router/router.go`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -18,52 +18,53 @@
     { "key": "user_id", "value": "1" },
     { "key": "class_id", "value": "1" },
     { "key": "club_id", "value": "1" },
-    { "key": "availability_date", "value": "2026-04-19" },
-    { "key": "range_start", "value": "2026-04-01" },
-    { "key": "range_end", "value": "2026-04-30" }
+    { "key": "availability_date", "value": "2026-09-01" },
+    { "key": "range_start", "value": "2026-09-01" },
+    { "key": "range_end", "value": "2026-09-30" }
   ],
   "item": [
     {
       "name": "Health",
+      "description": "No authentication.",
       "item": [
         {
-          "name": "GET /health",
+          "name": "Health check",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/health",
-            "description": "Liveness check. Returns `{ \"status\": \"ok\" }`."
+            "description": "`GET /health` — liveness. Returns `{ \"status\": \"ok\" }`."
           },
           "response": []
         }
-      ],
-      "description": "No authentication."
+      ]
     },
     {
       "name": "Public",
+      "description": "Unauthenticated routes under `/api`.",
       "item": [
         {
-          "name": "GET /api/halls",
+          "name": "List halls",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/halls",
-            "description": "List active halls."
+            "description": "`GET /api/halls` — active halls."
           },
           "response": []
         },
         {
-          "name": "GET /api/halls/:id",
+          "name": "Get hall by ID",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/halls/{{hall_id}}",
-            "description": "Single hall by ID. 404 if not found."
+            "description": "`GET /api/halls/:id` — 404 if missing."
           },
           "response": []
         },
         {
-          "name": "GET /api/availability (all halls, single date)",
+          "name": "Availability (all halls, one date)",
           "request": {
             "method": "GET",
             "header": [],
@@ -75,16 +76,16 @@
                 {
                   "key": "date",
                   "value": "{{availability_date}}",
-                  "description": "Required if not using start_date/end_date. Format YYYY-MM-DD."
+                  "description": "YYYY-MM-DD. Required when hall_id is omitted."
                 }
               ]
             },
-            "description": "When **hall_id** is omitted: returns availability across all halls for **date**.\n\nSet variable `availability_date` or edit the query value."
+            "description": "`GET /api/availability?date=` — omit `hall_id` to get slots for every hall on that date."
           },
           "response": []
         },
         {
-          "name": "GET /api/availability (one hall, single date)",
+          "name": "Availability (one hall, one date)",
           "request": {
             "method": "GET",
             "header": [],
@@ -97,12 +98,12 @@
                 { "key": "date", "value": "{{availability_date}}" }
               ]
             },
-            "description": "**hall_id** + **date** (YYYY-MM-DD): bookings/slots for that hall on that day."
+            "description": "`GET /api/availability?hall_id=&date=` — bookings for one hall on one day."
           },
           "response": []
         },
         {
-          "name": "GET /api/availability (one hall, date range)",
+          "name": "Availability (one hall, date range)",
           "request": {
             "method": "GET",
             "header": [],
@@ -116,22 +117,22 @@
                 { "key": "end_date", "value": "{{range_end}}" }
               ]
             },
-            "description": "Range mode: **hall_id**, **start_date**, **end_date** (YYYY-MM-DD)."
+            "description": "`GET /api/availability?hall_id=&start_date=&end_date=` — YYYY-MM-DD range for one hall."
           },
           "response": []
         },
         {
-          "name": "GET /api/departments",
+          "name": "List departments",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/departments",
-            "description": "All departments (reference data)."
+            "description": "`GET /api/departments` — all departments."
           },
           "response": []
         },
         {
-          "name": "GET /api/clubs",
+          "name": "List clubs",
           "request": {
             "method": "GET",
             "header": [],
@@ -143,17 +144,17 @@
                 {
                   "key": "dept_id",
                   "value": "{{dept_id}}",
-                  "description": "Optional filter by department.",
+                  "description": "Optional department filter.",
                   "disabled": true
                 }
               ]
             },
-            "description": "List clubs. Enable **dept_id** query to filter."
+            "description": "`GET /api/clubs` — enable `dept_id` to filter."
           },
           "response": []
         },
         {
-          "name": "GET /api/clubs (filtered by dept)",
+          "name": "List clubs by department",
           "request": {
             "method": "GET",
             "header": [],
@@ -163,33 +164,39 @@
               "path": ["api", "clubs"],
               "query": [{ "key": "dept_id", "value": "{{dept_id}}" }]
             },
-            "description": "Clubs for a specific department."
+            "description": "`GET /api/clubs?dept_id=` — clubs for one department."
           },
           "response": []
         }
-      ],
-      "description": "Unauthenticated routes."
+      ]
     },
     {
       "name": "Auth",
+      "description": "Login is public. `/me` and `/password` need JWT.",
       "item": [
         {
-          "name": "POST /api/auth/login",
+          "name": "Login as Admin",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
                   "try {",
                   "  var j = pm.response.json();",
                   "  if (j.token) {",
                   "    pm.collectionVariables.set('token', j.token);",
-                  "    console.log('Saved token to collection variable token');",
+                  "    pm.environment.set('token', j.token);",
                   "  }",
-                  "} catch (e) { console.warn('No JSON token in response'); }"
-                ],
-                "type": "text/javascript"
+                  "  if (j.user && j.user.user_id) {",
+                  "    pm.collectionVariables.set('user_id', String(j.user.user_id));",
+                  "  }",
+                  "  if (j.user && j.user.dept_id) {",
+                  "    pm.collectionVariables.set('dept_id', String(j.user.dept_id));",
+                  "  }",
+                  "} catch (e) { console.warn(e); }"
+                ]
               }
             }
           ],
@@ -198,25 +205,113 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"your_username\",\n  \"password\": \"your_password\"\n}"
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Body: `username`, `password` (required).\n\nResponse includes `token` (JWT), `user`, and sets HTTP-only cookie `auth_token` in browsers.\n\nTests script stores `token` for Bearer requests."
+            "description": "`POST /api/auth/login` — seed admin. Saves `token` (and `user_id` / `dept_id` when present)."
           },
           "response": []
         },
         {
-          "name": "POST /api/auth/logout",
+          "name": "Login as Dept Coordinator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "try {",
+                  "  var j = pm.response.json();",
+                  "  if (j.token) {",
+                  "    pm.collectionVariables.set('token', j.token);",
+                  "    pm.environment.set('token', j.token);",
+                  "  }",
+                  "  if (j.user && j.user.user_id) {",
+                  "    pm.collectionVariables.set('user_id', String(j.user.user_id));",
+                  "  }",
+                  "  if (j.user && j.user.dept_id) {",
+                  "    pm.collectionVariables.set('dept_id', String(j.user.dept_id));",
+                  "  }",
+                  "} catch (e) { console.warn(e); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"coordinator1\",\n  \"password\": \"coord123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "`POST /api/auth/login` — seed department coordinator."
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Requester",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "try {",
+                  "  var j = pm.response.json();",
+                  "  if (j.token) {",
+                  "    pm.collectionVariables.set('token', j.token);",
+                  "    pm.environment.set('token', j.token);",
+                  "  }",
+                  "  if (j.user && j.user.user_id) {",
+                  "    pm.collectionVariables.set('user_id', String(j.user.user_id));",
+                  "  }",
+                  "  if (j.user && j.user.dept_id) {",
+                  "    pm.collectionVariables.set('dept_id', String(j.user.dept_id));",
+                  "  }",
+                  "} catch (e) { console.warn(e); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student1\",\n  \"password\": \"req123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "`POST /api/auth/login` — seed requester (class representative)."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('token', '');",
+                  "pm.environment.set('token', '');"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/auth/logout",
-            "description": "Clears `auth_token` cookie (browser). Token variable in Postman is not cleared automatically."
+            "description": "`POST /api/auth/logout` — clears cookie `auth_token`. Tests also clear `{{token}}`."
           },
           "response": []
         },
         {
-          "name": "GET /api/auth/me",
+          "name": "Current user",
           "request": {
             "auth": {
               "type": "bearer",
@@ -225,12 +320,12 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/auth/me",
-            "description": "Current user from JWT. Requesters may also get a `requester` object in the response."
+            "description": "`GET /api/auth/me` — current user. Requesters may also get a `requester` object."
           },
           "response": []
         },
         {
-          "name": "PATCH /api/auth/password",
+          "name": "Change own password",
           "request": {
             "auth": {
               "type": "bearer",
@@ -240,103 +335,117 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"current_password\": \"old-password\",\n  \"new_password\": \"new-password-min-6-chars\"\n}"
+              "raw": "{\n  \"current_password\": \"admin123\",\n  \"new_password\": \"admin1234\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/password",
-            "description": "**Any authenticated role.** Verify **current_password**, then set **new_password** (min 6 chars). Does not rotate JWT."
+            "description": "`PATCH /api/auth/password` — any authenticated role. `new_password` min 6 characters. JWT is not rotated."
           },
           "response": []
         }
-      ],
-      "description": "Authentication; `/me` requires Bearer token or cookie."
+      ]
     },
     {
       "name": "Requester",
+      "description": "JWT role must be `requester`.",
       "auth": {
         "type": "bearer",
         "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
       },
       "item": [
         {
-          "name": "POST /api/requests",
+          "name": "Create booking request",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"hall_id\": 1,\n  \"event_title\": \"Annual seminar\",\n  \"event_description\": \"Optional description\",\n  \"event_date\": \"2026-05-01\",\n  \"start_time\": \"10:00\",\n  \"end_time\": \"12:30\",\n  \"expected_attendees\": 80,\n  \"purpose\": \"Optional purpose text\"\n}"
+              "raw": "{\n  \"hall_id\": 1,\n  \"event_title\": \"Annual seminar\",\n  \"event_description\": \"Optional description\",\n  \"event_date\": \"2026-09-15\",\n  \"start_time\": \"10:00\",\n  \"end_time\": \"12:30\",\n  \"expected_attendees\": 80,\n  \"purpose\": \"Department seminar\"\n}"
             },
             "url": "{{baseUrl}}/api/requests",
-            "description": "**Role:** `requester`.\n\n| Field | Required | Notes |\n|-------|----------|--------|\n| hall_id | yes | int |\n| event_title | yes | string |\n| event_date | yes | YYYY-MM-DD |\n| start_time | yes | HH:MM or HH:MM:SS |\n| end_time | yes | HH:MM or HH:MM:SS |\n| event_description | no | string |\n| expected_attendees | no | int |\n| purpose | no | string |"
+            "description": "`POST /api/requests`\n\n| Field | Required | Notes |\n|-------|----------|--------|\n| hall_id | yes | int |\n| event_title | yes | string |\n| event_date | yes | YYYY-MM-DD |\n| start_time | yes | HH:MM or HH:MM:SS |\n| end_time | yes | HH:MM or HH:MM:SS |\n| event_description | no | string |\n| expected_attendees | no | int |\n| purpose | no | string |"
           },
           "response": []
         },
         {
-          "name": "GET /api/requests/my",
+          "name": "My requests",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/requests/my",
-            "description": "**Role:** `requester`. List all requests created by the logged-in user."
+            "description": "`GET /api/requests/my` — requests created by the logged-in requester."
           },
           "response": []
         }
-      ],
-      "description": "JWT role must be **requester**."
+      ]
     },
     {
       "name": "Dept Coordinator",
+      "description": "JWT role must be `dept_coordinator`.",
       "auth": {
         "type": "bearer",
         "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
       },
       "item": [
         {
-          "name": "GET /api/requests/dept-pending",
+          "name": "Pending department requests",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/requests/dept-pending",
-            "description": "**Role:** `dept_coordinator`. Requests pending department review for this coordinator’s department."
+            "description": "`GET /api/requests/dept-pending` — queue for this coordinator's department."
           },
           "response": []
         },
         {
-          "name": "PATCH /api/requests/:id/dept-review",
+          "name": "Dept review (approve)",
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"action\": \"approve\",\n  \"remarks\": \"Optional remarks\"\n}"
+              "raw": "{\n  \"action\": \"approve\",\n  \"remarks\": \"Looks good\"\n}"
             },
             "url": "{{baseUrl}}/api/requests/{{request_id}}/dept-review",
-            "description": "**Role:** `dept_coordinator`.\n\nBody: **action** = `approve` or `reject` (required). **remarks** optional."
+            "description": "`PATCH /api/requests/:id/dept-review` — `action` is `approve` or `reject`. `remarks` optional."
           },
           "response": []
         },
         {
-          "name": "GET /api/users/faculties",
+          "name": "Dept review (reject)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"reject\",\n  \"remarks\": \"Hall not suitable for this event\"\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{request_id}}/dept-review",
+            "description": "`PATCH /api/requests/:id/dept-review` with `action: reject`."
+          },
+          "response": []
+        },
+        {
+          "name": "List faculties",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/users/faculties",
-            "description": "**Role:** `dept_coordinator`. Users with role `faculty`."
+            "description": "`GET /api/users/faculties` — users with role `faculty`."
           },
           "response": []
         }
-      ],
-      "description": "JWT role must be **dept_coordinator**."
+      ]
     },
     {
       "name": "Classes (Admin or Coordinator)",
+      "description": "JWT role `admin` or `dept_coordinator`.",
       "auth": {
         "type": "bearer",
         "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
       },
       "item": [
         {
-          "name": "GET /api/classes",
+          "name": "List classes by department",
           "request": {
             "method": "GET",
             "header": [],
@@ -344,14 +453,20 @@
               "raw": "{{baseUrl}}/api/classes?dept_id={{dept_id}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "classes"],
-              "query": [{ "key": "dept_id", "value": "{{dept_id}}", "description": "Required." }]
+              "query": [
+                {
+                  "key": "dept_id",
+                  "value": "{{dept_id}}",
+                  "description": "Required."
+                }
+              ]
             },
-            "description": "**Roles:** `admin` or `dept_coordinator`. Query **dept_id** is required."
+            "description": "`GET /api/classes?dept_id=` — `dept_id` is required."
           },
           "response": []
         },
         {
-          "name": "POST /api/classes",
+          "name": "Create class",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -360,255 +475,360 @@
               "raw": "{\n  \"class_name\": \"BCA Semester 3\",\n  \"dept_id\": 1,\n  \"year\": \"2025-26\"\n}"
             },
             "url": "{{baseUrl}}/api/classes",
-            "description": "**Roles:** `admin` or `dept_coordinator`.\n\n| Field | Required |\n|-------|----------|\n| class_name | yes |\n| dept_id | yes |\n| year | no |"
+            "description": "`POST /api/classes` — `class_name` and `dept_id` required; `year` optional."
           },
           "response": []
         },
         {
-          "name": "DELETE /api/classes/:id",
+          "name": "Delete class",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/classes/{{class_id}}",
-            "description": "**Roles:** `admin` or `dept_coordinator`."
+            "description": "`DELETE /api/classes/:id`."
           },
           "response": []
         }
-      ],
-      "description": "JWT role **admin** or **dept_coordinator**."
+      ]
     },
     {
       "name": "Admin",
+      "description": "JWT role must be `admin`.",
       "auth": {
         "type": "bearer",
         "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
       },
       "item": [
         {
-          "name": "GET /api/requests/admin-pending",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/requests/admin-pending",
-            "description": "**Role:** `admin`. Requests awaiting final admin approval."
-          },
-          "response": []
-        },
-        {
-          "name": "PATCH /api/requests/:id/admin-review",
-          "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"action\": \"approve\",\n  \"remarks\": \"Optional remarks\"\n}"
+          "name": "Requests & Bookings",
+          "item": [
+            {
+              "name": "Pending admin requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/requests/admin-pending",
+                "description": "`GET /api/requests/admin-pending` — requests awaiting final approval."
+              },
+              "response": []
             },
-            "url": "{{baseUrl}}/api/requests/{{request_id}}/admin-review",
-            "description": "**Role:** `admin`. **action:** `approve` | `reject`. Approving may create a booking (409 if slot conflict)."
-          },
-          "response": []
-        },
-        {
-          "name": "GET /api/bookings",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/bookings",
-            "description": "**Role:** `admin`. All bookings."
-          },
-          "response": []
-        },
-        {
-          "name": "PATCH /api/bookings/:id/cancel",
-          "request": {
-            "method": "PATCH",
-            "header": [],
-            "url": "{{baseUrl}}/api/bookings/{{booking_id}}/cancel",
-            "description": "**Role:** `admin`. Cancels a booking if not already cancelled."
-          },
-          "response": []
-        },
-        {
-          "name": "POST /api/departments",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"dept_name\": \"Computer Science\",\n  \"dept_code\": \"CS\"\n}"
+            {
+              "name": "Admin review (approve)",
+              "request": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"action\": \"approve\",\n  \"remarks\": \"Approved\"\n}"
+                },
+                "url": "{{baseUrl}}/api/requests/{{request_id}}/admin-review",
+                "description": "`PATCH /api/requests/:id/admin-review` — `action`: `approve` | `reject`. Approve creates a booking (409 on slot overlap)."
+              },
+              "response": []
             },
-            "url": "{{baseUrl}}/api/departments",
-            "description": "**Role:** `admin`. **dept_name** required; **dept_code** optional."
-          },
-          "response": []
-        },
-        {
-          "name": "PUT /api/departments/:id",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"dept_name\": \"Computer Science\",\n  \"dept_code\": \"CS\"\n}"
+            {
+              "name": "Admin review (reject)",
+              "request": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"action\": \"reject\",\n  \"remarks\": \"Slot not available\"\n}"
+                },
+                "url": "{{baseUrl}}/api/requests/{{request_id}}/admin-review",
+                "description": "`PATCH /api/requests/:id/admin-review` with `action: reject`."
+              },
+              "response": []
             },
-            "url": "{{baseUrl}}/api/departments/{{dept_id}}",
-            "description": "**Role:** `admin`. Update department."
-          },
-          "response": []
-        },
-        {
-          "name": "DELETE /api/departments/:id",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/departments/{{dept_id}}",
-            "description": "**Role:** `admin`."
-          },
-          "response": []
-        },
-        {
-          "name": "POST /api/halls",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"hall_name\": \"Main Auditorium\",\n  \"capacity\": 300,\n  \"location\": \"Admin Block\",\n  \"facilities\": {\n    \"projector\": true,\n    \"ac\": true,\n    \"seats\": 300\n  }\n}"
+            {
+              "name": "List all bookings",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/bookings",
+                "description": "`GET /api/bookings`."
+              },
+              "response": []
             },
-            "url": "{{baseUrl}}/api/halls",
-            "description": "**Role:** `admin`. Creates a hall (**hall_name**, **capacity** required). **facilities** is arbitrary JSON object."
-          },
-          "response": []
+            {
+              "name": "Cancel booking",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": "{{baseUrl}}/api/bookings/{{booking_id}}/cancel",
+                "description": "`PATCH /api/bookings/:id/cancel` — fails if already cancelled."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "PUT /api/halls/:id",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"hall_name\": \"Main Auditorium\",\n  \"capacity\": 300,\n  \"location\": \"Admin Block\",\n  \"facilities\": { \"projector\": true },\n  \"is_active\": true\n}"
+          "name": "Departments",
+          "item": [
+            {
+              "name": "Create department",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"dept_name\": \"Electronics\",\n  \"dept_code\": \"ECE\"\n}"
+                },
+                "url": "{{baseUrl}}/api/departments",
+                "description": "`POST /api/departments` — `dept_name` required; `dept_code` optional."
+              },
+              "response": []
             },
-            "url": "{{baseUrl}}/api/halls/{{hall_id}}",
-            "description": "**Role:** `admin`. Full update including **is_active**."
-          },
-          "response": []
-        },
-        {
-          "name": "DELETE /api/halls/:id",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/halls/{{hall_id}}",
-            "description": "**Role:** `admin`. Soft-deactivate hall."
-          },
-          "response": []
-        },
-        {
-          "name": "GET /api/users",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/users",
-            "description": "**Role:** `admin`. All users including inactive."
-          },
-          "response": []
-        },
-        {
-          "name": "GET /api/users?role=",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/users?role=requester",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users"],
-              "query": [{ "key": "role", "value": "requester", "description": "Filter: requester | admin | dept_coordinator | faculty | …" }]
+            {
+              "name": "Update department",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"dept_name\": \"Computer Science\",\n  \"dept_code\": \"CS\"\n}"
+                },
+                "url": "{{baseUrl}}/api/departments/{{dept_id}}",
+                "description": "`PUT /api/departments/:id`."
+              },
+              "response": []
             },
-            "description": "**Role:** `admin`. Filter users by role."
-          },
-          "response": []
+            {
+              "name": "Delete department",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/departments/{{dept_id}}",
+                "description": "`DELETE /api/departments/:id`."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "POST /api/users",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"SecurePass123\",\n  \"full_name\": \"Student One\",\n  \"email\": \"student@example.com\",\n  \"phone\": null,\n  \"role\": \"requester\",\n  \"dept_id\": 1,\n  \"requester_type\": \"class\",\n  \"class_id\": 1,\n  \"club_id\": null\n}"
+          "name": "Halls",
+          "item": [
+            {
+              "name": "Create hall",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hall_name\": \"Main Auditorium\",\n  \"capacity\": 300,\n  \"location\": \"Admin Block\",\n  \"facilities\": {\n    \"projector\": true,\n    \"ac\": true\n  }\n}"
+                },
+                "url": "{{baseUrl}}/api/halls",
+                "description": "`POST /api/halls` — `hall_name` and `capacity` required. `facilities` is an arbitrary JSON object."
+              },
+              "response": []
             },
-            "url": "{{baseUrl}}/api/users",
-            "description": "**Role:** `admin`.\n\n| Field | Notes |\n|-------|--------|\n| username, password, full_name, role | required |\n| email, phone | optional |\n| dept_id | optional |\n| requester_type | `class` or `club` for requesters |\n| class_id / club_id | tie to class or club when applicable |"
-          },
-          "response": []
-        },
-        {
-          "name": "DELETE /api/users/:id",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/users/{{user_id}}",
-            "description": "**Role:** `admin`. Deactivate user."
-          },
-          "response": []
-        },
-        {
-          "name": "PATCH /api/users/:id/reactivate",
-          "request": {
-            "method": "PATCH",
-            "header": [],
-            "url": "{{baseUrl}}/api/users/{{user_id}}/reactivate",
-            "description": "**Role:** `admin`."
-          },
-          "response": []
-        },
-        {
-          "name": "POST /api/clubs",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"club_name\": \"Tech Club\",\n  \"dept_id\": 1,\n  \"description\": \"Optional short description\"\n}"
+            {
+              "name": "Update hall",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hall_name\": \"Main Auditorium\",\n  \"capacity\": 300,\n  \"location\": \"Admin Block\",\n  \"facilities\": { \"projector\": true },\n  \"is_active\": true\n}"
+                },
+                "url": "{{baseUrl}}/api/halls/{{hall_id}}",
+                "description": "`PUT /api/halls/:id` — full update including `is_active`."
+              },
+              "response": []
             },
-            "url": "{{baseUrl}}/api/clubs",
-            "description": "**Role:** `admin`. **club_name** required; **dept_id**, **description** optional."
-          },
-          "response": []
+            {
+              "name": "Deactivate hall",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/halls/{{hall_id}}",
+                "description": "`DELETE /api/halls/:id` — soft-deactivates the hall."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "DELETE /api/clubs/:id",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/clubs/{{club_id}}",
-            "description": "**Role:** `admin`."
-          },
-          "response": []
+          "name": "Users",
+          "item": [
+            {
+              "name": "List all users",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/users",
+                "description": "`GET /api/users` — includes inactive users."
+              },
+              "response": []
+            },
+            {
+              "name": "List users by role",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users?role=requester",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users"],
+                  "query": [
+                    {
+                      "key": "role",
+                      "value": "requester",
+                      "description": "admin | dept_coordinator | requester | faculty"
+                    }
+                  ]
+                },
+                "description": "`GET /api/users?role=`."
+              },
+              "response": []
+            },
+            {
+              "name": "Create requester (class)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"student02\",\n  \"password\": \"req1234\",\n  \"full_name\": \"Student Two\",\n  \"email\": \"student02@example.com\",\n  \"phone\": \"9876543210\",\n  \"role\": \"requester\",\n  \"dept_id\": 1,\n  \"requester_type\": \"class\",\n  \"class_id\": 1\n}"
+                },
+                "url": "{{baseUrl}}/api/users",
+                "description": "`POST /api/users` — for `role: requester`, `dept_id` and `requester_type` (`class` | `club`) are required. Use `class_id` or `club_id` accordingly."
+              },
+              "response": []
+            },
+            {
+              "name": "Create requester (club)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"clubrep01\",\n  \"password\": \"req1234\",\n  \"full_name\": \"Club Representative\",\n  \"email\": \"clubrep@example.com\",\n  \"role\": \"requester\",\n  \"dept_id\": 1,\n  \"requester_type\": \"club\",\n  \"club_id\": 1\n}"
+                },
+                "url": "{{baseUrl}}/api/users",
+                "description": "`POST /api/users` — requester tied to a club."
+              },
+              "response": []
+            },
+            {
+              "name": "Create faculty",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"faculty01\",\n  \"password\": \"fac1234\",\n  \"full_name\": \"Dr Faculty\",\n  \"email\": \"faculty@example.com\",\n  \"role\": \"faculty\",\n  \"dept_id\": 1\n}"
+                },
+                "url": "{{baseUrl}}/api/users",
+                "description": "`POST /api/users` — `username`, `password`, `full_name`, `role` required."
+              },
+              "response": []
+            },
+            {
+              "name": "Create coordinator",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"coordinator2\",\n  \"password\": \"coord123\",\n  \"full_name\": \"Dept Coordinator Two\",\n  \"email\": \"coord2@example.com\",\n  \"role\": \"dept_coordinator\",\n  \"dept_id\": 1\n}"
+                },
+                "url": "{{baseUrl}}/api/users",
+                "description": "`POST /api/users` — department coordinator."
+              },
+              "response": []
+            },
+            {
+              "name": "Deactivate user",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/users/{{user_id}}",
+                "description": "`DELETE /api/users/:id` — sets `is_active` false."
+              },
+              "response": []
+            },
+            {
+              "name": "Reactivate user",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": "{{baseUrl}}/api/users/{{user_id}}/reactivate",
+                "description": "`PATCH /api/users/:id/reactivate`."
+              },
+              "response": []
+            },
+            {
+              "name": "Set user password (admin)",
+              "request": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"new_password\": \"newpass123\"\n}"
+                },
+                "url": "{{baseUrl}}/api/users/{{user_id}}/password",
+                "description": "`PATCH /api/users/:id/password` — admin sets another user's password (`new_password` min 6 chars). Does not require the old password."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "GET /api/reports/hall-usage",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/reports/hall-usage",
-            "description": "**Role:** `admin`. Hall usage report."
-          },
-          "response": []
+          "name": "Clubs",
+          "item": [
+            {
+              "name": "Create club",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"club_name\": \"Tech Club\",\n  \"dept_id\": 1,\n  \"description\": \"Optional short description\"\n}"
+                },
+                "url": "{{baseUrl}}/api/clubs",
+                "description": "`POST /api/clubs` — `club_name` required; `dept_id` and `description` optional."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete club",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/clubs/{{club_id}}",
+                "description": "`DELETE /api/clubs/:id`."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "GET /api/reports/department-usage",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/reports/department-usage",
-            "description": "**Role:** `admin`. Department usage report."
-          },
-          "response": []
+          "name": "Reports",
+          "item": [
+            {
+              "name": "Hall usage report",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/reports/hall-usage",
+                "description": "`GET /api/reports/hall-usage`."
+              },
+              "response": []
+            },
+            {
+              "name": "Department usage report",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/reports/department-usage",
+                "description": "`GET /api/reports/department-usage`."
+              },
+              "response": []
+            }
+          ]
         }
-      ],
-      "description": "JWT role must be **admin**."
+      ]
     }
   ]
 }
